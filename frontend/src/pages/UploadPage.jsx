@@ -95,9 +95,14 @@ function UploadPage() {
             setUploadResult(response.data);
         } catch (err) {
             console.error('upload failed:', err);
-            // try to show the server's error message if available
-            const errorMsg =
-                err.response?.data?.error || 'Something went wrong. Is the backend running?';
+            // try to safely parse the server's error message.
+            // if we get an unexpected JSON object back (like a Vercel 404 format), extract the string
+            // so React doesn't crash trying to render an Object directly!
+            const errorData = err.response?.data?.error;
+            const errorMsg = typeof errorData === 'string'
+                ? errorData
+                : (errorData?.message || 'Something went wrong. Is the backend running?');
+
             setError(errorMsg);
         } finally {
             setIsUploading(false);
