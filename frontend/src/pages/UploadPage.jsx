@@ -4,6 +4,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import '../styles/upload.css';
 
 function UploadPage() {
@@ -16,6 +17,7 @@ function UploadPage() {
     const [uploadResult, setUploadResult] = useState(null);
     const [error, setError] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [jobDescription, setJobDescription] = useState('');
 
     // this handles when a user drops a file onto the dropzone
     const handleDrop = (e) => {
@@ -77,10 +79,13 @@ function UploadPage() {
         // we use FormData because that's how you send files with axios
         const formData = new FormData();
         formData.append('file', selectedFile);
+        if (jobDescription.trim()) {
+            formData.append('job_description', jobDescription.trim());
+        }
 
         try {
-            // posting to Flask backend - make sure Flask is running on port 5000
-            const response = await axios.post('http://localhost:5001/upload', formData, {
+            // posting to Flask backend using our dynamic configuration API_BASE_URL
+            const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -175,6 +180,24 @@ function UploadPage() {
                                 </button>
                             </div>
                         )}
+
+                        {/* optional job description input */}
+                        <div style={{ textAlign: 'left', marginBottom: '24px' }}>
+                            <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--charcoal)', marginBottom: '8px' }}>
+                                Paste a job description to enable AI-powered matching (optional)
+                            </label>
+                            <textarea
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                                placeholder="Paste the job requirements here... If left blank, we'll fall back to basic keyword matching."
+                                style={{
+                                    width: '100%', minHeight: '100px', padding: '12px',
+                                    borderRadius: '8px', border: '1px solid var(--charcoal)',
+                                    backgroundColor: 'var(--charcoal)', color: 'var(--white)',
+                                    fontFamily: 'inherit', fontSize: '0.95rem', resize: 'vertical'
+                                }}
+                            />
+                        </div>
 
                         {/* upload button - disabled until a file is selected */}
                         <button

@@ -4,11 +4,13 @@
 import os
 import zipfile
 import shutil
+import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from resume_parser import parse_resume
-from candidate_scorer import score_candidate, rank_candidates
+from candidate_scorer import score_candidate, rank_candidates, detect_anomalies
 from mock_s3 import mock_upload_to_s3
+from database import init_db, save_candidates, get_latest_batch
 
 app = Flask(__name__)
 CORS(app)  # this lets our React frontend talk to Flask without CORS errors
@@ -21,9 +23,8 @@ EXTRACT_FOLDER = os.path.join(os.path.dirname(__file__), "extracted")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(EXTRACT_FOLDER, exist_ok=True)
 
-# this stores the last batch of processed results in memory
-# in a real app we'd use a database, but this works for our prototype
-last_results = []
+# Initialize the database (this creates the tables if they don't exist built on the models)
+init_db()
 
 
 @app.route("/upload", methods=["POST"])
@@ -33,7 +34,6 @@ def upload_zip():
     parses each resume inside, scores them, and returns
     the ranked results as JSON.
     """
-    global last_results
 
     # check if a file was actually sent
     if "file" not in request.files:
@@ -43,6 +43,8 @@ def upload_zip():
 
     if file.filename == "":
         return jsonify({"error": "empty filename, please select a file"}), 400
+
+    job_description = request.form.get("job_description", "")
 
     # make sure it's a zip file
     if not file.filename.endswith(".zip"):
@@ -88,22 +90,27 @@ def upload_zip():
 
         print(f"parsed {len(parsed_resumes)} resumes, now scoring...")
 
-        # score each parsed resume
+        # score each parsed resume, passing the optional job_description
         scored_candidates = []
         for resume_data in parsed_resumes:
-            scored = score_candidate(resume_data)
+            scored = score_candidate(resume_data, job_description)
             scored_candidates.append(scored)
+
+        # run batch anomaly detection for keyword stuffing
+        scored_candidates = detect_anomalies(scored_candidates)
 
         # rank them by score (highest first)
         ranked_candidates = rank_candidates(scored_candidates)
 
-        # store results in memory so the /results endpoint can return them
-        last_results = ranked_candidates
+        # Generate a unique batch_id for this upload and save to the MySQL Database
+        batch_id = str(uuid.uuid4())
+        save_candidates(ranked_candidates, batch_id)
 
-        print(f"done! ranked {len(ranked_candidates)} candidates")
+        print(f"done! ranked and saved {len(ranked_candidates)} candidates under batch {batch_id}")
 
         return jsonify({
             "message": f"successfully processed {len(ranked_candidates)} resumes",
+            "batch_id": batch_id,
             "count": len(ranked_candidates),
             "candidates": ranked_candidates
         }), 200
@@ -118,12 +125,15 @@ def upload_zip():
 @app.route("/results", methods=["GET"])
 def get_results():
     """
-    Returns the last batch of processed results.
+    Returns the latest batch of processed results directly from the MySQL database.
     The dashboard page calls this when it loads.
     """
+    # Fetch from database instead of the old in-memory variable
+    latest_results = get_latest_batch()
+    
     return jsonify({
-        "candidates": last_results,
-        "count": len(last_results)
+        "candidates": latest_results,
+        "count": len(latest_results)
     }), 200
 
 

@@ -1,8 +1,11 @@
 // LandingPage.jsx - the main landing page with hero section and features
 // this is what visitors see first when they open the app
 
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import FeatureCard from '../components/FeatureCard';
+import { API_BASE_URL } from '../config';
 import '../styles/landing.css';
 
 function LandingPage() {
@@ -29,6 +32,34 @@ function LandingPage() {
                 'We flag resumes with keyword stuffing and suspicious patterns so your HR team only sees genuine candidates.',
         },
     ];
+
+    // state for real pipeline stats replacing hardcoded fake data
+    const [stats, setStats] = useState({ total: '—', avgScore: '—', anomalies: '—' });
+    const [loadingStats, setLoadingStats] = useState(true);
+
+    // fetch the latest batch results from the API when component mounts
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/results`);
+                const candidates = response.data.candidates || [];
+
+                if (candidates.length > 0) {
+                    const total = candidates.length;
+                    const avgScore = (candidates.reduce((sum, c) => sum + c.score, 0) / total).toFixed(1);
+                    const anomalies = candidates.filter(c => c.is_anomaly).length;
+
+                    setStats({ total, avgScore, anomalies });
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats for landing page:', err);
+            } finally {
+                setLoadingStats(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
 
     return (
         <div className="landing-page">
@@ -64,19 +95,29 @@ function LandingPage() {
                 <div className="hero-right">
                     <div className="hero-preview-card">
                         <div className="preview-card-header">Live Pipeline Stats</div>
+                        {/* using real data fetched from the backend so marketing site matches reality */}
                         <div className="preview-stat">
                             <span className="preview-stat-label">Candidates Ranked</span>
-                            <span className="preview-stat-value highlight">1,240</span>
+                            <span className="preview-stat-value highlight">
+                                {loadingStats ? 'Loading...' : stats.total}
+                            </span>
                         </div>
                         <div className="preview-stat">
                             <span className="preview-stat-label">Avg. Score</span>
-                            <span className="preview-stat-value">73.4</span>
+                            <span className="preview-stat-value">
+                                {loadingStats ? 'Loading...' : stats.avgScore}
+                            </span>
                         </div>
                         <div className="preview-stat">
                             <span className="preview-stat-label">Anomalies Detected</span>
-                            <span className="preview-stat-value">12</span>
+                            <span className="preview-stat-value">
+                                {loadingStats ? 'Loading...' : stats.anomalies}
+                            </span>
                         </div>
                     </div>
+                    <p style={{ textAlign: 'center', color: 'var(--sage)', fontSize: '0.85rem', marginTop: '12px' }}>
+                        Live data from last processed batch.
+                    </p>
                 </div>
             </section>
 
