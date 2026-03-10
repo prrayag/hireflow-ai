@@ -1,0 +1,106 @@
+/* global.css - base styles and CSS variables for the whole app */
+/* importing our fonts from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap');
+
+/* color palette - we're sticking to these colors across the entire app */
+:root {
+  --orange: #FF6B00;
+  --sage: #8FA896;
+  --cream: #E8EAD8;
+  --charcoal: #2A2A2A;
+  --white: #FFFFFF;
+  --light-gray: #F4F4F2;
+
+  /* some extra variables so we don't repeat ourselves */
+  --orange-hover: #e55f00;
+  --border-radius: 12px;
+  --shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.10);
+  --transition: all 0.2s ease;
+}
+
+/* basic reset - every tutorial says to do this */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--cream);
+  color: var(--charcoal);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', sans-serif;
+  line-height: 1.2;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  border: none;
+  outline: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* utility button styles used across multiple pages */
+.btn-primary {
+  background-color: var(--orange);
+  color: var(--white);
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: var(--transition);
+  border: 2px solid var(--orange);
+}
+
+.btn-primary:hover {
+  background-color: var(--orange-hover);
+  border-color: var(--orange-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn-secondary {
+  background-color: var(--white);
+  color: var(--charcoal);
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid var(--charcoal);
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  background-color: var(--charcoal);
+  color: var(--white);
+  transform: translateY(-1px);
+}
+
+/* container for centering content */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}

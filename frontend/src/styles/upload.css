@@ -1,0 +1,196 @@
+/* upload.css - styles for the upload page */
+
+.upload-page {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+}
+
+.upload-container {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 48px;
+    box-shadow: var(--shadow);
+    max-width: 560px;
+    width: 100%;
+    text-align: center;
+}
+
+.upload-title {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: 8px;
+}
+
+.upload-subtitle {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 32px;
+}
+
+/* the dashed border drop zone area */
+.upload-dropzone {
+    border: 2px dashed var(--sage);
+    border-radius: var(--border-radius);
+    padding: 48px 24px;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--light-gray);
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.drag-over {
+    border-color: var(--orange);
+    background: rgba(255, 107, 0, 0.04);
+}
+
+.upload-dropzone-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.upload-dropzone-text {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+.upload-dropzone-text strong {
+    color: var(--orange);
+}
+
+/* hidden file input - the dropzone handles clicks */
+.upload-file-input {
+    display: none;
+}
+
+/* shows which file the user selected */
+.upload-file-info {
+    background: var(--light-gray);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.95rem;
+}
+
+.upload-file-name {
+    color: var(--charcoal);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upload-file-remove {
+    background: none;
+    color: #999;
+    font-size: 1.2rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.upload-file-remove:hover {
+    color: #e53e3e;
+    background: rgba(229, 62, 62, 0.08);
+}
+
+/* the big upload button */
+.upload-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.05rem;
+}
+
+.upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* loading/processing state */
+.upload-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 0;
+}
+
+.upload-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--light-gray);
+    border-top-color: var(--orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.upload-loading-text {
+    font-size: 1.05rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* success state after upload completes */
+.upload-success {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.upload-success-icon {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.upload-success-title {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: 8px;
+}
+
+.upload-success-text {
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 1rem;
+}
+
+/* error message */
+.upload-error {
+    background: rgba(229, 62, 62, 0.08);
+    color: #c53030;
+    padding: 14px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    text-align: left;
+}
+
+@media (max-width: 768px) {
+    .upload-container {
+        padding: 32px 20px;
+    }
+
+    .upload-dropzone {
+        padding: 32px 16px;
+    }
+}
