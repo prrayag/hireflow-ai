@@ -226,30 +226,37 @@
     gap: 28px;
 }
 
-/* --- FEATURE CARD --- */
-.feature-card {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    padding: 36px 28px;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-    text-align: left;
+/* --- FEATURE BLOCK RE-DESIGN --- */
+.feature-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
-.feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-hover);
+.feature-illustration-card {
+    background-color: var(--white);
+    border-radius: 24px;
+    width: 100%;
+    aspect-ratio: 1 / 1.1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.feature-icon {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-    display: inline-block;
+.feature-block:hover .feature-illustration-card {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
 }
 
 .feature-title {
     font-family: 'Sora', sans-serif;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--charcoal);
     margin-bottom: 12px;
@@ -259,23 +266,389 @@
     font-size: 0.95rem;
     color: #666;
     line-height: 1.6;
+    max-width: 90%;
 }
 
-/* --- FOOTER --- */
-.footer {
+/* --- MOCKUP UI ELEMENTS INSIDE CARDS --- */
+.ui-mockup {
+    position: relative;
+    z-index: 10;
+}
+
+/* 1. Resume Parsing Mockup */
+.mockup-parse {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.mockup-file {
+    background: white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    width: 100px;
+    height: 140px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.mockup-file-header {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.mockup-point {
+    width: 6px;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 50%;
+}
+
+.mockup-line {
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 4px;
+}
+
+.mockup-line.w-full {
+    width: 100%;
+}
+
+.mockup-line.w-3-4 {
+    width: 75%;
+}
+
+.mockup-line.w-1-2 {
+    width: 50%;
+}
+
+.mockup-line.op-20 {
+    opacity: 0.4;
+}
+
+.mockup-scanner {
+    position: absolute;
+    top: 20px;
+    left: -20px;
+    right: -20px;
+    height: 2px;
+    background: var(--orange);
+    box-shadow: 0 0 10px var(--orange);
+    animation: scan 2s infinite alternate ease-in-out;
+}
+
+@keyframes scan {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(80px);
+    }
+}
+
+/* 2. Candidate Score Mockup */
+.mockup-score {
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transform: scale(1.1);
+}
+
+.mockup-candidate {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.mockup-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--sage), #b6c9be);
+}
+
+.mockup-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mockup-name {
+    width: 80px;
+    height: 8px;
+    background: var(--charcoal);
+    border-radius: 4px;
+}
+
+.mockup-role {
+    width: 50px;
+    height: 6px;
+    background: #d0d0d0;
+    border-radius: 4px;
+}
+
+.mockup-badge {
+    background: var(--orange);
+    color: white;
+    font-family: 'Sora', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    box-shadow: 0 0 0 rgba(255, 107, 0, 0.4);
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7);
+        transform: scale(1);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 107, 0, 0);
+        transform: scale(1.05);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 107, 0, 0);
+        transform: scale(1);
+    }
+}
+
+/* 3. Anomaly Detection Mockup */
+.mockup-anomaly {
+    position: relative;
+    width: 200px;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.mockup-bg-lines {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 0 20px;
+}
+
+.mockup-alert {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(255, 107, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 2;
+    animation: float-alert 3s infinite ease-in-out;
+}
+
+.mockup-alert-icon {
+    font-size: 1.2rem;
+}
+
+.mockup-alert-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+@keyframes float-alert {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+/* --- IMPACT SECTION --- */
+.impact-section {
+    padding: 100px 40px;
+    background-color: var(--cream);
+    /* Integrated beautifully into the site palette */
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.impact-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 60px;
+}
+
+.impact-left h2 {
+    font-size: 2.3rem;
+    font-weight: 500;
+    color: var(--charcoal);
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+    max-width: 440px;
+}
+
+.impact-right {
+    display: flex;
+    gap: 50px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.impact-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.impact-stat.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.impact-stat.delay-1 {
+    transition-delay: 0.15s;
+}
+
+.impact-stat.delay-2 {
+    transition-delay: 0.3s;
+}
+
+.impact-number {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 4rem;
+    font-weight: 400;
+    color: var(--charcoal);
+    letter-spacing: -2px;
+    line-height: 1;
+}
+
+.impact-label {
+    font-size: 0.95rem;
+    color: var(--sage);
+    /* Integrated sage accent color */
+    font-weight: 600;
+    max-width: 140px;
+    line-height: 1.4;
+}
+
+/* --- PREMIUM FOOTER --- */
+.footer-premium {
     background-color: var(--charcoal);
     color: var(--white);
-    text-align: center;
-    padding: 32px 40px;
-    font-size: 0.9rem;
-    margin-top: 40px;
+    padding: 80px 40px 40px;
+    margin-top: 0;
 }
 
-.footer p {
-    opacity: 0.8;
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    gap: 60px;
+    padding-bottom: 60px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-brand {
+    max-width: 300px;
+}
+
+.footer-brand .navbar-logo {
+    font-size: 1.8rem;
+}
+
+.footer-brand p {
+    color: #A0A0A0;
+    margin-top: 16px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.footer-links {
+    display: flex;
+    gap: 80px;
+}
+
+.link-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.link-group h4 {
+    color: var(--white);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.link-group a {
+    color: #A0A0A0;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+}
+
+.link-group a:hover {
+    color: var(--orange);
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 32px;
+    display: flex;
+    justify-content: space-between;
+    color: #A0A0A0;
+    font-size: 0.85rem;
 }
 
 /* --- RESPONSIVE --- */
+@media (max-width: 992px) {
+    .impact-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 40px;
+    }
+
+    .impact-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .footer-container {
+        flex-direction: column;
+    }
+
+    .footer-links {
+        gap: 40px;
+        flex-wrap: wrap;
+    }
+}
+
 @media (max-width: 768px) {
     .hero {
         flex-direction: column;
@@ -309,6 +682,11 @@
     .features-grid {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+
+    .impact-right {
+        flex-direction: column;
+        gap: 30px;
     }
 
     .navbar {
