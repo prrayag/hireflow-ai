@@ -1,0 +1,81 @@
+/* animated-background.css - subtle, professional animated background */
+
+.animated-bg-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--cream);
+}
+
+.bg-shape {
+    position: absolute;
+    filter: blur(80px);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: float 20s infinite ease-in-out alternate;
+}
+
+.shape-1 {
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(143, 168, 150, 0.4) 0%, rgba(143, 168, 150, 0) 70%);
+    top: -10vw;
+    left: -10vw;
+    animation-delay: 0s;
+}
+
+.shape-2 {
+    width: 45vw;
+    height: 45vw;
+    background: radial-gradient(circle, rgba(255, 107, 0, 0.15) 0%, rgba(255, 107, 0, 0) 70%);
+    bottom: -15vw;
+    right: -10vw;
+    animation-delay: -5s;
+    animation-duration: 25s;
+}
+
+.shape-3 {
+    width: 30vw;
+    height: 30vw;
+    background: radial-gradient(circle, rgba(42, 42, 42, 0.05) 0%, rgba(42, 42, 42, 0) 70%);
+    top: 40vh;
+    left: 40vw;
+    animation-delay: -10s;
+    animation-duration: 18s;
+}
+
+.bg-texture-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    opacity: 0.1;
+    pointer-events: none;
+    background-image: radial-gradient(var(--charcoal) 1.5px, transparent 1.5px);
+    background-size: 32px 32px;
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(3vw, -5vh) scale(1.05);
+    }
+
+    66% {
+        transform: translate(-2vw, 4vh) scale(0.95);
+    }
+
+    100% {
+        transform: translate(1vw, -2vh) scale(1.1);
+    }
+}
