@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import CandidateTable from '../components/CandidateTable';
+import DashboardChart from '../components/DashboardChart';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 import '../styles/dashboard.css';
 
 function Dashboard() {
@@ -15,6 +17,8 @@ function Dashboard() {
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [jobDescription, setJobDescription] = useState('');
+
+    useScrollReveal([candidates, loading]);
 
     // frontend filter/search states
     const [searchQuery, setSearchQuery] = useState('');
@@ -76,9 +80,9 @@ function Dashboard() {
     }
 
     return (
-        <div className="dashboard-page">
+        <div className="dashboard-page overflow-hidden">
             {/* header with title and upload more button */}
-            <div className="dashboard-header">
+            <div className="dashboard-header animate-on-scroll">
                 <h1 className="dashboard-title">Dashboard</h1>
                 <button
                     className="btn-primary"
@@ -91,7 +95,7 @@ function Dashboard() {
             {candidates.length > 0 ? (
                 <>
                     {/* stats bar at the top - three boxes, no emojis */}
-                    <div className="stats-bar">
+                    <div className="stats-bar animate-on-scroll" style={{ animationDelay: '0.1s' }}>
                         <div className="stat-box">
                             <div className="stat-icon-bar stat-icon-blue"></div>
                             <div className="stat-value">{totalResumes}</div>
@@ -109,8 +113,13 @@ function Dashboard() {
                         </div>
                     </div>
 
+                    {/* visual representation chart */}
+                    {filteredCandidates.length > 0 && (
+                        <DashboardChart candidates={filteredCandidates} />
+                    )}
+
                     {/* Job Description panel */}
-                    <div className="jd-panel">
+                    <div className="jd-panel animate-on-scroll" style={{ animationDelay: '0.2s' }}>
                         <div className="jd-panel-header" onClick={() => setJdExpanded(!jdExpanded)}>
                             <div className="jd-panel-title-area">
                                 <svg className="jd-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -143,7 +152,7 @@ function Dashboard() {
                     </div>
 
                     {/* search, filter, and top-n control bar above the table */}
-                    <div className="dashboard-controls">
+                    <div className="dashboard-controls animate-on-scroll" style={{ animationDelay: '0.3s' }}>
                         <input
                             type="text"
                             placeholder="Search by name or skill..."

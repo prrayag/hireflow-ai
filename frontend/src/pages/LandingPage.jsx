@@ -6,10 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import FeatureCard from '../components/FeatureCard';
 import { API_BASE_URL } from '../config';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 import '../styles/landing.css';
 
 function LandingPage() {
     const navigate = useNavigate();
+    useScrollReveal();
 
     // the three features we want to highlight on the landing page
     const features = [
@@ -134,7 +136,7 @@ function LandingPage() {
     return (
         <div className="landing-page">
             {/* hero section - split layout with text on left and card on right */}
-            <section className="hero">
+            <section className="hero animate-on-scroll">
                 <div className="hero-left">
                     <span className="hero-badge">AI-Powered Recruitment Analytics</span>
                     <h1 className="hero-heading">
@@ -163,36 +165,38 @@ function LandingPage() {
 
                 {/* floating preview card on the right side */}
                 <div className="hero-right">
-                    <div className="hero-preview-card">
-                        <div className="preview-card-header">Live Pipeline Stats</div>
-                        {/* using real data fetched from the backend so marketing site matches reality */}
-                        <div className="preview-stat">
-                            <span className="preview-stat-label">Candidates Ranked</span>
-                            <span className="preview-stat-value highlight">
-                                {loadingStats ? 'Loading...' : stats.total}
-                            </span>
+                    <div className="hero-preview-wrapper">
+                        <div className="hero-preview-card">
+                            <div className="preview-card-header">Live Pipeline Stats</div>
+                            {/* using real data fetched from the backend so marketing site matches reality */}
+                            <div className="preview-stat">
+                                <span className="preview-stat-label">Candidates Ranked</span>
+                                <span className="preview-stat-value highlight">
+                                    {loadingStats ? 'Loading...' : stats.total}
+                                </span>
+                            </div>
+                            <div className="preview-stat">
+                                <span className="preview-stat-label">Avg. Score</span>
+                                <span className="preview-stat-value">
+                                    {loadingStats ? 'Loading...' : stats.avgScore}
+                                </span>
+                            </div>
+                            <div className="preview-stat">
+                                <span className="preview-stat-label">Anomalies Detected</span>
+                                <span className="preview-stat-value">
+                                    {loadingStats ? 'Loading...' : stats.anomalies}
+                                </span>
+                            </div>
                         </div>
-                        <div className="preview-stat">
-                            <span className="preview-stat-label">Avg. Score</span>
-                            <span className="preview-stat-value">
-                                {loadingStats ? 'Loading...' : stats.avgScore}
-                            </span>
-                        </div>
-                        <div className="preview-stat">
-                            <span className="preview-stat-label">Anomalies Detected</span>
-                            <span className="preview-stat-value">
-                                {loadingStats ? 'Loading...' : stats.anomalies}
-                            </span>
-                        </div>
+                        <p style={{ textAlign: 'center', color: 'var(--sage)', fontSize: '0.85rem', marginTop: '16px' }}>
+                            Live data from last processed batch.
+                        </p>
                     </div>
-                    <p style={{ textAlign: 'center', color: 'var(--sage)', fontSize: '0.85rem', marginTop: '12px' }}>
-                        Live data from last processed batch.
-                    </p>
                 </div>
             </section>
 
             {/* features section - three cards in a row */}
-            <section className="features-section">
+            <section className="features-section animate-on-scroll">
                 <h2 className="features-section-title">How It Works</h2>
                 <p className="features-section-subtitle">
                     From upload to insight — our pipeline handles it all.
@@ -210,7 +214,7 @@ function LandingPage() {
             </section>
 
             {/* impact section - inspired by premium data workflows, moved below features integration */}
-            <section className="impact-section">
+            <section className="impact-section animate-on-scroll">
                 <div className="impact-container">
                     <div className="impact-left">
                         <h2>Automate your most analytical<br />multi-step recruitment workflows</h2>

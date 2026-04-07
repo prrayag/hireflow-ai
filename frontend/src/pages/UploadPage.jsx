@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 import '../styles/upload.css';
 
 // all supported resume file extensions
@@ -19,6 +20,7 @@ function isSupported(filename) {
 function UploadPage() {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
+    useScrollReveal();
 
     // state for tracking the upload flow
     const [selectedFiles, setSelectedFiles] = useState([]);
@@ -181,7 +183,7 @@ function UploadPage() {
 
     return (
         <div className="upload-page">
-            <div className="upload-container">
+            <div className="upload-container animate-on-scroll">
                 <h1 className="upload-title">Upload Resumes</h1>
                 <p className="upload-subtitle">
                     Drop a ZIP or select individual resume files — we support
@@ -286,7 +288,7 @@ function UploadPage() {
                                 style={{
                                     width: '100%', minHeight: '100px', padding: '12px',
                                     borderRadius: '8px', border: '1px solid var(--charcoal)',
-                                    backgroundColor: 'var(--charcoal)', color: 'var(--white)',
+                                    backgroundColor: 'var(--white)', color: 'var(--charcoal)',
                                     fontFamily: 'inherit', fontSize: '0.95rem', resize: 'vertical'
                                 }}
                             />

@@ -181,7 +181,7 @@
 }
 
 /* pulse animation on the card to make it feel alive */
-.hero-preview-card {
+.hero-preview-wrapper {
     animation: float 6s ease-in-out infinite;
 }
 
