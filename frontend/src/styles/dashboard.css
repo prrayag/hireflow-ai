@@ -125,7 +125,7 @@
 }
 
 .candidate-table tbody tr:nth-child(even) {
-    background-color: var(--cream);
+    background-color: var(--light-gray);
 }
 
 .candidate-table tbody tr:hover {

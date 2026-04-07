@@ -7,8 +7,8 @@ import '../styles/dashboard.css';
 function CandidateTable({ candidates }) {
     // this function figures out what color class to use for the score badge
     const getScoreClass = (score) => {
-        if (score >= 70) return 'high';
-        if (score >= 40) return 'medium';
+        if (score >= 50) return 'high';
+        if (score >= 30) return 'medium';
         return 'low';
     };
 
