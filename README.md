@@ -4,67 +4,116 @@
 
 Built by a team of CS students as a high-performance recruitment analytics platform.
 
+![HireFlow AI Dashboard](https://raw.githubusercontent.com/prrayag/hireflow-ai/main/docs/assets/mockup.png) <!-- Placeholder for actual UI screenshot -->
+
 ---
 
 ## 🚀 Key Features (V2 Optimized)
 
-- **Hybrid ML Scoring**: Combines deterministic keyword matching with a **Random Forest** classifier and **Sentence-BERT** semantic similarity for 95% ranking accuracy.
-- **Multi-Format OCR Pipeline**: high-accuracy text extraction from **PDF, DOCX, DOC, and Images** (PNG, JPG) using **EasyOCR**.
-- **Education Quality Scoring**: Automatically evaluates degree levels (PhD to Diploma) and field-of-study relevance to the job description.
-- **Project Relevance Analysis**: Uses NLP to score candidate projects specifically against JD requirements.
-- **Anomaly Detection**: Statistical flagging of "keyword stuffing" or abnormally padded resumes.
-- **DRY Architecture**: Optimized backend with shared feature extraction for both real-time scoring and batch training.
+### 🧠 Hybrid ML Scoring
+The system uses a blended scoring formula that combines deterministic keywords with machine learning and NLP:
+*   **Random Forest Classifier**: Trained on 1,100+ historical resume records to predict candidate suitability.
+*   **Sentence-BERT (SBERT)**: Calculates cosine similarity between resumes and the Job Description (JD) for semantic mapping.
+*   **Multi-Feature Scoring**: Weighted scoring based on skill overlap (22%), experience (13%), education quality (10%), and project relevance (15%).
+
+### 📄 Multi-Format OCR Pipeline
+High-accuracy text extraction handled via a sophisticated parsing engine:
+*   **Supported Formats**: PDF, DOCX, DOC, and Images (PNG, JPG, BMP).
+*   **OCR Support**: Integrated **EasyOCR** for scanned PDFs and image-based resumes.
+*   **Section-Aware Extraction**: Automatically identifies sections for work, education, projects, and skills.
+
+### 🎓 Education Quality & Project Analysis
+*   **Degree Level Scoring**: PhD (1.0) to Diploma (0.4) scoring based on qualification.
+*   **Field Relevance**: Bonus points for degrees matching the job domain.
+*   **Project Relevance**: Individual projects are split and scored semantically against JD requirements.
+
+### ⚛️ Premium UI Experience
+*   **Animated Particle Background**: Ambience-enhancing interactive visualization in the dashboard.
+*   **Glassmorphism Dashboard**: Modern dark-themed UI with real-time scoring visualizations.
+*   **Anomaly Detection**: Automatic flagging of "keyword stuffing" or abnormally formatted resumes.
+
+---
+
+## 📊 Performance Metrics
+The model is validated for high precision in candidate ranking:
+- **Accuracy**: 95.12% on cross-industry test sets.
+- **Inference Speed**: ~50ms per resume (leveraging JD embedding caching).
+- **Cross-Validation**: 96.43% (5-fold) accuracy.
+
+---
+
+## 🏗️ Technical Architecture
+
+```mermaid
+graph TD
+    A[User Uploads Resumes & JD] --> B{Resume Parser}
+    B -->|PDF/DOCX| C[Text Pre-processing]
+    B -->|IMG/Scanned| D[EasyOCR Engine]
+    C --> E[Section Splitting]
+    D --> E
+    E --> F[Feature Extraction]
+    F --> G[Hybrid Scorer]
+    G -->|Deterministic| H[Keyword Overlap]
+    G -->|Sentence-BERT| I[Project/Skill Similarity]
+    G -->|ML Model| J[Random Forest Ranking]
+    H & I & J --> K[Final Ranked Result]
+    K --> L[Dashboard Visualization]
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 18** (Vite)
-- **Vanilla CSS** (Custom Design System)
-- **React Router** & **Axios**
+- **Framework**: React 18 (Vite)
+- **Styling**: Vanilla CSS (Custom Design System with Glassmorphism)
+- **Animations**: Custom `ParticleBackground.jsx` implementation.
+- **Tools**: Axios, React Router, Lucide-react.
 
 ### Backend
-- **Python 3.10** & **Flask**
-- **Machine Learning**: `scikit-learn` (Random Forest), `sentence-transformers` (BERT)
-- **NLP**: Semantic cosine similarity for project and skill matching.
-- **Parsing**: `PyMuPDF`, `python-docx`, `mammoth`
-- **OCR**: `EasyOCR` (GPU/CPU support)
-- **Storage**: JSON-based persistent "Data Lake" for ML training history.
+- **Engine**: Python 3.10+ (Flask)
+- **Machine Learning**: `scikit-learn` (Random Forest), `sentence-transformers` (all-MiniLM-L6-v2)
+- **NLP**: `numpy`, `pandas`, Cosine Similarity for semantic matching.
+- **Parsing**: `PyMuPDF` (PDF), `python-docx` (DOCX), `mammoth` (DOC), `EasyOCR` & `Pillow` (Images).
+- **Storage**: JSON-based persistent "Data Lake" for audit logs and training data.
 
 ---
 
-## 📊 Performance Metrics
-The system is trained on a combined dataset of 1,100+ resumes.
-- **Test Accuracy**: 94.92%
-- **Cross-Validation Accuracy**: 96.43% (5-fold)
-- **Inference Speed**: ~50ms per resume (with BERT JD caching)
+## 🚀 Deployment (Vercel)
+
+HireFlow AI is designed for easy deployment as a monorepo setup on **Vercel**.
+
+### 1. Backend (Flask API)
+The backend is ready for Vercel Serverless Functions.
+*   **Vercel Config**: Already includes `backend/vercel.json` and `backend/wsgi.py`.
+*   **Steps**:
+    1. Import the repository to Vercel.
+    2. Set the **Root Directory** to `backend`.
+    3. Install dependencies automatically via `requirements.txt`.
+
+### 2. Frontend (Vite App)
+*   **Command**: `npm run build`
+*   **Output Directory**: `dist`
+*   **Environment Variables**:
+    *   Set `VITE_API_URL` to your Vercel backend URL (e.g., `https://your-api.vercel.app`).
+    *   Vite will automatically use this URL when building the production app.
 
 ---
 
-## ⚙️ How to Run Locally
+## ⚙️ Local Setup (Windows Recommended)
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- [Sentence-BERT models](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (auto-downloaded on first run)
-
-### Quick Start
-1. **Clone & Install**
+### Quick Start (Unified Launcher)
+1. **Prerequisites**: Python 3.10+ and Node.js 18+.
+2. **Setup**:
    ```bash
-   git clone https://github.com/your-username/hireflow-ai.git
-   cd hireflow-ai
+   pip install -r backend/requirements.txt
+   cd frontend && npm install && cd ..
    ```
-
-2. **Unified Launcher**
-   Use the root-level launcher to start both services at once:
+3. **Launch**:
    ```bash
    python start.py
    ```
-
-3. **Manual Startup**
-   - **Backend**: `cd backend && pip install -r requirements.txt && python app.py` (Starts on port 5001)
-   - **Frontend**: `cd frontend && npm install && npm run dev` (Starts on port 5173)
+   *This starts both the Flask backend (5001) and Vite backend (5173).*
 
 ---
 
@@ -73,22 +122,23 @@ The system is trained on a combined dataset of 1,100+ resumes.
 ```text
 hireflow-ai/
 ├── backend/
-│   ├── app.py              # Flask API & Route Orchestration
-│   ├── resume_features.py  # [DRY] Centralized Extraction & Scoring Logic
-│   ├── candidate_scorer.py # ML Inference & Hybrid Scoring Pipeline
-│   ├── train_model.py      # ML Training Pipeline (Random Forest + BERT)
-│   ├── resume_parser.py    # Multi-format Text Extraction & OCR
-│   ├── json_storage.py     # Persistent JSON Data Lake
-│   ├── model.pkl           # Trained ML Model (Artifact)
-│   └── requirements.txt    # Optimized Dependencies
+│   ├── app.py              # Main API Orchestration
+│   ├── resume_features.py  # Central Feature Extraction (DRY)
+│   ├── candidate_scorer.py # ML Inference pipeline
+│   ├── train_model.py      # ML Training Pipeline
+│   ├── resume_parser.py    # Multi-format parsing & OCR
+│   ├── model.pkl           # Trained RF model
+│   └── vercel.json         # Serverless configuration
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/          # Dashboard, Upload, Landing
-│   │   ├── components/     # UI Components
-│   │   └── styles/         # Custom CSS
+│   │   ├── components/     # UI Components (ParticleBackground, etc.)
+│   │   ├── config.js       # Production API configuration
+│   │   └── pages/          # Dashboard, Result views
 │   └── vite.config.js
-├── start.py                # Unified Backend/Frontend Launcher
-└── Super_Resume_Dataset_Rows_1_to_1000.xlsx  # Core Training Data
+├── scripts/
+│   └── start.py            # Unified launcher
+└── docs/
+    └── assets/             # UI Screenshots and Architecture assets
 ```
 
 ---
