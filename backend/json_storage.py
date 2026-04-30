@@ -4,15 +4,20 @@
 
 import os
 import json
+<<<<<<< HEAD
 import threading
 from datetime import datetime
 from pymongo import MongoClient
 from config import MONGO_URI
+=======
+from datetime import datetime
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
 # JSON file location — stored in the backend directory
 JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), "candidates_data.json")
 
 
+<<<<<<< HEAD
 def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
     """
     Background worker to push individual candidate entries to MongoDB Atlas.
@@ -42,6 +47,8 @@ def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
         print(f"error saving to MongoDB Atlas: {e}")
 
 
+=======
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 def _load_existing_data():
     """
     Load the existing JSON file if it exists.
@@ -86,11 +93,30 @@ def save_to_json(candidates_list, batch_id, job_description=""):
     # build the candidate entries for this batch
     batch_candidates = []
     for cand in candidates_list:
+<<<<<<< HEAD
         # Save every field the scorer returns — strip only the raw_text
         # (it's large and not needed for dashboard display)
         candidate_entry = {k: v for k, v in cand.items() if k != "raw_text"}
         # Ensure rank is always present
         candidate_entry.setdefault("rank", 0)
+=======
+        candidate_entry = {
+            "rank": cand.get("rank", 0),
+            "name": cand.get("name", "Unknown"),
+            "score": cand.get("score", 0.0),
+            "matched_skills": cand.get("matched_skills", []),
+            "jd_matched_skills": cand.get("jd_matched_skills", []),
+            "experience_years": cand.get("experience_years", 0),
+            "has_relevant_cert": cand.get("has_relevant_cert", False),
+            "project_relevance_score": cand.get("project_relevance_score", 0.0),
+            "relevant_projects_count": cand.get("relevant_projects_count", 0),
+            "education_quality": cand.get("education_quality", 0.0),
+            "filename": cand.get("filename", ""),
+            "is_anomaly": cand.get("is_anomaly", False),
+            "anomaly_reason": cand.get("anomaly_reason", ""),
+            "raw_text": cand.get("raw_text", "")
+        }
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
         batch_candidates.append(candidate_entry)
     
     # create the batch entry
@@ -116,9 +142,12 @@ def save_to_json(candidates_list, batch_id, job_description=""):
     except IOError as e:
         print(f"error writing JSON file: {e}")
         raise e
+<<<<<<< HEAD
         
     # push individual candidates to MongoDB Atlas in the background
     threading.Thread(target=_save_to_mongo, args=(batch_candidates, batch_id, job_description, now)).start()
+=======
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
     
     return JSON_FILE_PATH
 

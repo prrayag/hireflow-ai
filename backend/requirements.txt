@@ -13,5 +13,9 @@ pandas
 openpyxl
 matplotlib
 joblib
+<<<<<<< HEAD
 torch
 pymongo
+=======
+sentence-transformers
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02

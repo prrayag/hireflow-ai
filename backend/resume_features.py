@@ -1,8 +1,37 @@
+<<<<<<< HEAD
+=======
+# resume_features.py - Shared feature extraction & scoring config for HireFlow-AI
+# =================================================================================
+# This module is the SINGLE SOURCE OF TRUTH for:
+#   - Skill keyword vocabulary (300+ cross-industry terms)
+#   - Scoring weights configuration
+#   - Section splitting (resume → work, education, projects, skills, etc.)
+#   - Context detection (education vs work vs project)
+#   - Project extraction & splitting
+#   - Experience extraction (years, has_experience)
+#   - Contact info detection
+#   - Skill counting & matching
+#   - Education quality scoring
+#   - Name extraction from filenames
+#
+# Both candidate_scorer.py and train_model.py import from this module,
+# eliminating ~400 lines of duplication.
+# =================================================================================
+
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 import os
 import re
 import datetime
 
+<<<<<<< HEAD
 
+=======
+# ====================================================================
+# SCORING CONFIGURATION
+# Adjust these weights based on what matters most for shortlisting.
+# Must sum to 1.0.
+# ====================================================================
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 SCORING_WEIGHTS = {
     "jd_skill_overlap":   0.22,   # Direct keyword match
     "skills_match":       0.15,   # BERT semantic similarity
@@ -13,7 +42,11 @@ SCORING_WEIGHTS = {
     "project_relevance":  0.15,   # Relevant projects matching JD
     "education_quality":  0.10,   # Degree level + field relevance
 }
+<<<<<<< HEAD
 STRONG_THRESHOLD = 0.5  
+=======
+STRONG_THRESHOLD = 0.5  # Score >= 50% is considered a "Strong" candidate (Class 1)
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
 # Normalisation cap for experience years
 EXPERIENCE_NORM_CAP = 15.0
@@ -21,11 +54,21 @@ EXPERIENCE_NORM_CAP = 15.0
 # Experience floor: fresh grads with 0 detected years still get this baseline
 EXPERIENCE_FLOOR = 0.1
 
+<<<<<<< HEAD
 
 SKILL_KEYWORDS = [
     # IT & Software
     "python", "java", "javascript", "sql", "react", "machine learning", "data analysis", "aws", "docker",
     "kubernetes", "git", "html", "css", "node.js", "flask", "tensorcflow", "pandas", "mongodb", "rest api",
+=======
+# ====================================================================
+# SKILL KEYWORD VOCABULARY (300+ cross-industry terms)
+# ====================================================================
+SKILL_KEYWORDS = [
+    # IT & Software
+    "python", "java", "javascript", "sql", "react", "machine learning", "data analysis", "aws", "docker",
+    "kubernetes", "git", "html", "css", "node.js", "flask", "tensorflow", "pandas", "mongodb", "rest api",
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
     "agile", "c++", "c#", "linux", "cloud computing", "rust", "go", "typescript", "ruby", "django", "vue.js",
     "angular", "spring boot", "postgresql", "mysql", "redis", "elasticsearch", "graphql", "microservices",
     "ci/cd", "jenkins", "terraform", "ansible", "azure", "gcp", "data science", "deep learning", "nlp",
@@ -388,8 +431,15 @@ def has_work_experience(text):
     for i, line in enumerate(lines):
         # Look for date ranges in this line
         if re.search(r'(20[0-2][0-9]\s*[-–to]+\s*(20[0-2][0-9]|present|now|current))', line):
+<<<<<<< HEAD
             # Evaluate context only on the current line to prevent overlapping with adjacent OCR blocks
             context = line
+=======
+            # Get surrounding context (3 lines before and after)
+            context_start = max(0, i - 3)
+            context_end = min(len(lines), i + 4)
+            context = ' '.join(lines[context_start:context_end])
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
             # Only count as experience if it's work context, not education or project
             if is_education_context(context) or is_project_context(context):
@@ -434,7 +484,11 @@ def extract_experience_years(text):
         # Sum up date ranges in the work section only
         total_years = 0
         date_ranges = re.finditer(
+<<<<<<< HEAD
             r'(20[0-2][0-9])[\s\-to–]+(?:[a-z]+\s+)?(20[0-2][0-9]|present|now|current)',
+=======
+            r'(20[0-2][0-9])\s*[-to–]+\s*(20[0-2][0-9]|present|now|current)',
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
             work_lower
         )
         for dr in date_ranges:
@@ -442,6 +496,7 @@ def extract_experience_years(text):
             end_str = dr.group(2)
             end_year = current_year if end_str in ['present', 'now', 'current'] else int(end_str)
             if end_year >= start_year:
+<<<<<<< HEAD
                 total_years += max(end_year - start_year, 1)
 
         if total_years > 0:
@@ -450,6 +505,13 @@ def extract_experience_years(text):
         # If strategy 1 found 0 years but a work section existed, 
         # fall through to strategy 2 (entire document scan) just in case
         # OCR scrambled the sections.
+=======
+                total_years += (end_year - start_year)
+
+        if total_years > 0:
+            return min(total_years, 25)
+        return 0
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
     # Strategy 2: Fallback — context-based filtering on full text
     text_lower = text.lower()
@@ -465,15 +527,26 @@ def extract_experience_years(text):
 
     for i, line in enumerate(lines):
         date_ranges = list(re.finditer(
+<<<<<<< HEAD
             r'(20[0-2][0-9])[\s\-to–]+(?:[a-z]+\s+)?(20[0-2][0-9]|present|now|current)',
+=======
+            r'(20[0-2][0-9])\s*[-to–]+\s*(20[0-2][0-9]|present|now|current)',
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
             line
         ))
 
         if not date_ranges:
             continue
 
+<<<<<<< HEAD
         # Evaluate context only on the current line to prevent overlapping with adjacent OCR blocks
         context = line
+=======
+        # Get surrounding context
+        context_start = max(0, i - 3)
+        context_end = min(len(lines), i + 4)
+        context = ' '.join(lines[context_start:context_end])
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
         # Skip education and project timelines
         if is_education_context(context):
@@ -487,7 +560,11 @@ def extract_experience_years(text):
             end_str = dr.group(2)
             end_year = current_year if end_str in ['present', 'now', 'current'] else int(end_str)
             if end_year >= start_year:
+<<<<<<< HEAD
                 total_years += max(end_year - start_year, 1)
+=======
+                total_years += (end_year - start_year)
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
 
     if total_years > 0:
         return min(total_years, 25)
@@ -796,6 +873,7 @@ def extract_certificate_mentions(text):
     return cert_matches
 
 
+<<<<<<< HEAD
 def extract_name_from_text(raw_text):
     """
     Tries to pull the candidate's name from the very top of their resume text.
@@ -1093,3 +1171,27 @@ def extract_candidate_info(raw_text):
         "department":       department,
         "job_role":         job_role,
     }
+=======
+# ============================================================
+# Name Extraction
+# ============================================================
+
+def extract_name_from_filename(filename):
+    """Extracts a human-readable name from the resume filename."""
+    name = os.path.splitext(filename)[0]
+
+    # Remove common non-name words and digits
+    name = re.sub(r'(?i)(resume|cv|_resume|_cv|\d+)', '', name)
+
+    # Replace underscores and hyphens with spaces
+    name = name.replace("_", " ").replace("-", " ")
+
+    # Clean up extra spaces and title case it
+    name = " ".join(name.split()).title().strip()
+
+    # If we end up with an empty string just use the filename
+    if not name:
+        name = filename
+
+    return name
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02

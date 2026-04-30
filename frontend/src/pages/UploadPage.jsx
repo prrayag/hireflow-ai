@@ -278,18 +278,24 @@ function UploadPage() {
 
                         {/* optional job description input */}
                         <div style={{ textAlign: 'left', marginBottom: '24px' }}>
+<<<<<<< HEAD
                             <label style={{
                                 display: 'block', fontSize: '0.9rem', fontWeight: 600,
                                 color: 'var(--text-muted)', marginBottom: '8px',
                                 fontFamily: 'var(--font-sans, Inter, sans-serif)'
                             }}>
                                 Paste a job description to enable AI-powered matching <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(optional)</span>
+=======
+                            <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--charcoal)', marginBottom: '8px' }}>
+                                Paste a job description to enable AI-powered matching (optional)
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
                             </label>
                             <textarea
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
                                 placeholder="Paste the job requirements here... If left blank, we'll fall back to basic keyword matching."
                                 style={{
+<<<<<<< HEAD
                                     width: '100%', minHeight: '100px', padding: '14px',
                                     borderRadius: '10px',
                                     border: '1px solid var(--border-strong)',
@@ -305,6 +311,13 @@ function UploadPage() {
                                 }}
                                 onFocus={e => e.target.style.borderColor = 'var(--accent)'}
                                 onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
+=======
+                                    width: '100%', minHeight: '100px', padding: '12px',
+                                    borderRadius: '8px', border: '1px solid var(--charcoal)',
+                                    backgroundColor: 'var(--white)', color: 'var(--charcoal)',
+                                    fontFamily: 'inherit', fontSize: '0.95rem', resize: 'vertical'
+                                }}
+>>>>>>> bc841b2b73539cb57fa7e01542fc93fa4bd72e02
                             />
                         </div>
 
