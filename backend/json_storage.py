@@ -13,23 +13,31 @@ from config import MONGO_URI
 JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), "candidates_data.json")
 
 
-def _save_to_mongo(batch_entry):
+def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
     """
-    Background worker to push the batch entry to MongoDB Atlas.
+    Background worker to push individual candidate entries to MongoDB Atlas.
     """
     if not MONGO_URI:
+        print("MongoDB connection skipped: MONGO_URI is not set in environment.")
         return
         
     try:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         db = client['hireflow_db']
-        collection = db['batches']
+        collection = db['candidates']
         
-        # Copy the dictionary so we don't accidentally mutate the original data
-        # with MongoDB's _id field.
-        batch_copy = dict(batch_entry)
-        collection.insert_one(batch_copy)
-        print(f"successfully saved batch {batch_entry['batch_id']} to MongoDB Atlas!")
+        # Prepare documents for insertion by attaching batch metadata
+        documents = []
+        for cand in batch_candidates:
+            doc = dict(cand)
+            doc['batch_id'] = batch_id
+            doc['job_description'] = job_description
+            doc['uploaded_at'] = uploaded_at
+            documents.append(doc)
+            
+        if documents:
+            collection.insert_many(documents)
+            print(f"successfully saved {len(documents)} individual candidates to MongoDB Atlas!")
     except Exception as e:
         print(f"error saving to MongoDB Atlas: {e}")
 
@@ -109,8 +117,8 @@ def save_to_json(candidates_list, batch_id, job_description=""):
         print(f"error writing JSON file: {e}")
         raise e
         
-    # push to MongoDB Atlas in the background
-    threading.Thread(target=_save_to_mongo, args=(batch_entry,)).start()
+    # push individual candidates to MongoDB Atlas in the background
+    threading.Thread(target=_save_to_mongo, args=(batch_candidates, batch_id, job_description, now)).start()
     
     return JSON_FILE_PATH
 
