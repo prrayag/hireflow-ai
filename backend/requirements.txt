@@ -13,4 +13,5 @@ pandas
 openpyxl
 matplotlib
 joblib
-sentence-transformers
+torch
+pymongo

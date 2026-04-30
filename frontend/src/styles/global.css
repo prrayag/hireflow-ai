@@ -1,25 +1,48 @@
-/* global.css - base styles and CSS variables for the whole app */
-/* importing our fonts from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap');
+/* global.css — HireFlow AI dark design system */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
-/* color palette - we're sticking to these colors across the entire app */
 :root {
-  --orange: #FF6B00;
-  --sage: #8FA896;
-  --cream: #E8EAD8;
-  --charcoal: #2A2A2A;
-  --white: #FFFFFF;
-  --light-gray: #F4F4F2;
+  /* Dark palette */
+  --bg:          #0a0a0a;
+  --bg-surface:  #111111;
+  --bg-card:     #161616;
+  --bg-elevated: #1e1e1e;
 
-  /* some extra variables so we don't repeat ourselves */
-  --orange-hover: #e55f00;
-  --border-radius: 12px;
-  --shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.10);
-  --transition: all 0.2s ease;
+  /* Text */
+  --text:        #f0f0f0;
+  --text-muted:  #888888;
+  --text-faint:  #555555;
+  --border:      rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+
+  /* Accent — electric blue replacing orange */
+  --accent:      #3b7ef8;
+  --accent-dim:  rgba(59,126,248,0.15);
+  --accent-hover:#5b96ff;
+
+  /* Typography */
+  --serif:      'Outfit', system-ui, sans-serif;
+  --sans:       'Inter', system-ui, sans-serif;
+  /* aliases used by some components */
+  --font-serif: var(--serif);
+  --font-sans:  var(--sans);
+
+  /* Legacy var aliases (used in Navbar / UploadPage) */
+  --ink:        #f0f0f0;   /* replaces old black text color */
+  --charcoal:   #888888;   /* replaces old dark charcoal → muted text in dark mode */
+  --white:      #161616;   /* replaces old white background → dark card surface */
+
+  /* Shadows */
+  --shadow:      0 2px 16px rgba(0,0,0,0.4);
+  --shadow-hover:0 6px 32px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 24px rgba(59,126,248,0.15);
+
+  /* Misc */
+  --radius:      12px;
+  --ease:        cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:  all 0.2s var(--ease);
 }
 
-/* basic reset - every tutorial says to do this */
 *,
 *::before,
 *::after {
@@ -28,21 +51,21 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background-color: var(--cream);
-  color: var(--charcoal);
+  font-family: var(--sans);
+  background-color: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--serif);
   line-height: 1.2;
+  color: var(--text);
 }
 
 a {
@@ -52,65 +75,67 @@ a {
 
 button {
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   border: none;
   outline: none;
 }
 
-img {
-  max-width: 100%;
-  display: block;
-}
+img { max-width: 100%; display: block; }
 
-/* utility button styles used across multiple pages */
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* Global utility buttons */
 .btn-primary {
-  background-color: var(--orange);
-  color: var(--white);
-  padding: 14px 32px;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 28px;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   transition: var(--transition);
-  border: 2px solid var(--orange);
+  border: 1px solid var(--accent);
 }
-
 .btn-primary:hover {
-  background-color: var(--orange-hover);
-  border-color: var(--orange-hover);
+  background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-glow);
 }
 
 .btn-secondary {
-  background-color: var(--white);
-  color: var(--charcoal);
-  padding: 14px 32px;
+  background: transparent;
+  color: var(--text);
+  padding: 12px 28px;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  border: 2px solid var(--charcoal);
+  border: 1px solid var(--border-strong);
   transition: var(--transition);
 }
-
 .btn-secondary:hover {
-  background-color: var(--charcoal);
-  color: var(--white);
-  transform: translateY(-1px);
+  background: var(--bg-elevated);
+  border-color: rgba(255,255,255,0.25);
 }
 
-/* container for centering content */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
 }
 
-.animate-on-scroll { 
-    opacity: 0; 
-    transform: translateY(30px); 
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out; 
-} 
-.animate-on-scroll.revealed { 
-    opacity: 1; 
-    transform: translateY(0); 
+/* GSAP reveal helpers */
+.gsap-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.gsap-reveal-left {
+  opacity: 0;
+  transform: translateX(-28px);
+}
+.gsap-reveal-right {
+  opacity: 0;
+  transform: translateX(28px);
 }
