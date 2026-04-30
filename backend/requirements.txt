@@ -1,0 +1,17 @@
+flask
+flask-cors
+PyMuPDF
+python-docx
+werkzeug
+scikit-learn
+gunicorn
+easyocr
+Pillow
+mammoth
+numpy
+pandas
+openpyxl
+matplotlib
+joblib
+torch
+pymongo

@@ -1,0 +1,141 @@
+/* global.css — HireFlow AI dark design system */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Dark palette */
+  --bg:          #0a0a0a;
+  --bg-surface:  #111111;
+  --bg-card:     #161616;
+  --bg-elevated: #1e1e1e;
+
+  /* Text */
+  --text:        #f0f0f0;
+  --text-muted:  #888888;
+  --text-faint:  #555555;
+  --border:      rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+
+  /* Accent — electric blue replacing orange */
+  --accent:      #3b7ef8;
+  --accent-dim:  rgba(59,126,248,0.15);
+  --accent-hover:#5b96ff;
+
+  /* Typography */
+  --serif:      'Outfit', system-ui, sans-serif;
+  --sans:       'Inter', system-ui, sans-serif;
+  /* aliases used by some components */
+  --font-serif: var(--serif);
+  --font-sans:  var(--sans);
+
+  /* Legacy var aliases (used in Navbar / UploadPage) */
+  --ink:        #f0f0f0;   /* replaces old black text color */
+  --charcoal:   #888888;   /* replaces old dark charcoal → muted text in dark mode */
+  --white:      #161616;   /* replaces old white background → dark card surface */
+
+  /* Shadows */
+  --shadow:      0 2px 16px rgba(0,0,0,0.4);
+  --shadow-hover:0 6px 32px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 24px rgba(59,126,248,0.15);
+
+  /* Misc */
+  --radius:      12px;
+  --ease:        cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:  all 0.2s var(--ease);
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--serif);
+  line-height: 1.2;
+  color: var(--text);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--sans);
+  border: none;
+  outline: none;
+}
+
+img { max-width: 100%; display: block; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* Global utility buttons */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: var(--transition);
+  border: 1px solid var(--accent);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
+  transition: var(--transition);
+}
+.btn-secondary:hover {
+  background: var(--bg-elevated);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* GSAP reveal helpers */
+.gsap-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.gsap-reveal-left {
+  opacity: 0;
+  transform: translateX(-28px);
+}
+.gsap-reveal-right {
+  opacity: 0;
+  transform: translateX(28px);
+}
