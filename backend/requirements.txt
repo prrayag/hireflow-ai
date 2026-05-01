@@ -1,7 +1,12 @@
+# HireFlow AI - Python Backend Dependencies
+# Install with: pip install -r requirements.txt
+
 flask
 flask-cors
+pymongo[srv]
 PyMuPDF
 python-docx
+pdfplumber
 werkzeug
 scikit-learn
 gunicorn
@@ -11,6 +16,5 @@ mammoth
 numpy
 pandas
 openpyxl
-matplotlib
 joblib
-sentence-transformers
+torch

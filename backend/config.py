@@ -8,3 +8,6 @@ BACKEND_URL = os.environ.get("HIREFLOW_BACKEND_URL", "http://localhost:5001")
 
 # Future: PostgreSQL on AWS RDS
 # DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:pass@host:5432/hireflow")
+
+# MongoDB Atlas connection string
+MONGO_URI = "mongodb+srv://admin:hireflow1234%40studio@hireflowai.sfqk6hv.mongodb.net/?appName=HireFlowAI"

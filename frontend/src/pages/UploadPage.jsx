@@ -278,19 +278,33 @@ function UploadPage() {
 
                         {/* optional job description input */}
                         <div style={{ textAlign: 'left', marginBottom: '24px' }}>
-                            <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 600, color: 'var(--charcoal)', marginBottom: '8px' }}>
-                                Paste a job description to enable AI-powered matching (optional)
+                            <label style={{
+                                display: 'block', fontSize: '0.9rem', fontWeight: 600,
+                                color: 'var(--text-muted)', marginBottom: '8px',
+                                fontFamily: 'var(--font-sans, Inter, sans-serif)'
+                            }}>
+                                Paste a job description to enable AI-powered matching <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(optional)</span>
                             </label>
                             <textarea
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
                                 placeholder="Paste the job requirements here... If left blank, we'll fall back to basic keyword matching."
                                 style={{
-                                    width: '100%', minHeight: '100px', padding: '12px',
-                                    borderRadius: '8px', border: '1px solid var(--charcoal)',
-                                    backgroundColor: 'var(--white)', color: 'var(--charcoal)',
-                                    fontFamily: 'inherit', fontSize: '0.95rem', resize: 'vertical'
+                                    width: '100%', minHeight: '100px', padding: '14px',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--border-strong)',
+                                    backgroundColor: 'var(--bg-surface)',
+                                    color: 'var(--text)',
+                                    fontFamily: 'var(--font-sans, Inter, sans-serif)',
+                                    fontSize: '0.9rem',
+                                    resize: 'vertical',
+                                    outline: 'none',
+                                    caretColor: 'var(--accent)',
+                                    lineHeight: '1.6',
+                                    transition: 'border-color 0.2s'
                                 }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--border-strong)'}
                             />
                         </div>
 

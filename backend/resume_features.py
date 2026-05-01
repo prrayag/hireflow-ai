@@ -1,30 +1,8 @@
-# resume_features.py - Shared feature extraction & scoring config for HireFlow-AI
-# =================================================================================
-# This module is the SINGLE SOURCE OF TRUTH for:
-#   - Skill keyword vocabulary (300+ cross-industry terms)
-#   - Scoring weights configuration
-#   - Section splitting (resume → work, education, projects, skills, etc.)
-#   - Context detection (education vs work vs project)
-#   - Project extraction & splitting
-#   - Experience extraction (years, has_experience)
-#   - Contact info detection
-#   - Skill counting & matching
-#   - Education quality scoring
-#   - Name extraction from filenames
-#
-# Both candidate_scorer.py and train_model.py import from this module,
-# eliminating ~400 lines of duplication.
-# =================================================================================
-
 import os
 import re
 import datetime
 
-# ====================================================================
-# SCORING CONFIGURATION
-# Adjust these weights based on what matters most for shortlisting.
-# Must sum to 1.0.
-# ====================================================================
+
 SCORING_WEIGHTS = {
     "jd_skill_overlap":   0.22,   # Direct keyword match
     "skills_match":       0.15,   # BERT semantic similarity
@@ -35,7 +13,7 @@ SCORING_WEIGHTS = {
     "project_relevance":  0.15,   # Relevant projects matching JD
     "education_quality":  0.10,   # Degree level + field relevance
 }
-STRONG_THRESHOLD = 0.5  # Score >= 50% is considered a "Strong" candidate (Class 1)
+STRONG_THRESHOLD = 0.5  
 
 # Normalisation cap for experience years
 EXPERIENCE_NORM_CAP = 15.0
@@ -43,13 +21,11 @@ EXPERIENCE_NORM_CAP = 15.0
 # Experience floor: fresh grads with 0 detected years still get this baseline
 EXPERIENCE_FLOOR = 0.1
 
-# ====================================================================
-# SKILL KEYWORD VOCABULARY (300+ cross-industry terms)
-# ====================================================================
+
 SKILL_KEYWORDS = [
     # IT & Software
     "python", "java", "javascript", "sql", "react", "machine learning", "data analysis", "aws", "docker",
-    "kubernetes", "git", "html", "css", "node.js", "flask", "tensorflow", "pandas", "mongodb", "rest api",
+    "kubernetes", "git", "html", "css", "node.js", "flask", "tensorcflow", "pandas", "mongodb", "rest api",
     "agile", "c++", "c#", "linux", "cloud computing", "rust", "go", "typescript", "ruby", "django", "vue.js",
     "angular", "spring boot", "postgresql", "mysql", "redis", "elasticsearch", "graphql", "microservices",
     "ci/cd", "jenkins", "terraform", "ansible", "azure", "gcp", "data science", "deep learning", "nlp",
@@ -412,10 +388,8 @@ def has_work_experience(text):
     for i, line in enumerate(lines):
         # Look for date ranges in this line
         if re.search(r'(20[0-2][0-9]\s*[-–to]+\s*(20[0-2][0-9]|present|now|current))', line):
-            # Get surrounding context (3 lines before and after)
-            context_start = max(0, i - 3)
-            context_end = min(len(lines), i + 4)
-            context = ' '.join(lines[context_start:context_end])
+            # Evaluate context only on the current line to prevent overlapping with adjacent OCR blocks
+            context = line
 
             # Only count as experience if it's work context, not education or project
             if is_education_context(context) or is_project_context(context):
@@ -460,7 +434,7 @@ def extract_experience_years(text):
         # Sum up date ranges in the work section only
         total_years = 0
         date_ranges = re.finditer(
-            r'(20[0-2][0-9])\s*[-to–]+\s*(20[0-2][0-9]|present|now|current)',
+            r'(20[0-2][0-9])[\s\-to–]+(?:[a-z]+\s+)?(20[0-2][0-9]|present|now|current)',
             work_lower
         )
         for dr in date_ranges:
@@ -468,11 +442,14 @@ def extract_experience_years(text):
             end_str = dr.group(2)
             end_year = current_year if end_str in ['present', 'now', 'current'] else int(end_str)
             if end_year >= start_year:
-                total_years += (end_year - start_year)
+                total_years += max(end_year - start_year, 1)
 
         if total_years > 0:
             return min(total_years, 25)
-        return 0
+        
+        # If strategy 1 found 0 years but a work section existed, 
+        # fall through to strategy 2 (entire document scan) just in case
+        # OCR scrambled the sections.
 
     # Strategy 2: Fallback — context-based filtering on full text
     text_lower = text.lower()
@@ -488,17 +465,15 @@ def extract_experience_years(text):
 
     for i, line in enumerate(lines):
         date_ranges = list(re.finditer(
-            r'(20[0-2][0-9])\s*[-to–]+\s*(20[0-2][0-9]|present|now|current)',
+            r'(20[0-2][0-9])[\s\-to–]+(?:[a-z]+\s+)?(20[0-2][0-9]|present|now|current)',
             line
         ))
 
         if not date_ranges:
             continue
 
-        # Get surrounding context
-        context_start = max(0, i - 3)
-        context_end = min(len(lines), i + 4)
-        context = ' '.join(lines[context_start:context_end])
+        # Evaluate context only on the current line to prevent overlapping with adjacent OCR blocks
+        context = line
 
         # Skip education and project timelines
         if is_education_context(context):
@@ -512,7 +487,7 @@ def extract_experience_years(text):
             end_str = dr.group(2)
             end_year = current_year if end_str in ['present', 'now', 'current'] else int(end_str)
             if end_year >= start_year:
-                total_years += (end_year - start_year)
+                total_years += max(end_year - start_year, 1)
 
     if total_years > 0:
         return min(total_years, 25)
@@ -821,25 +796,300 @@ def extract_certificate_mentions(text):
     return cert_matches
 
 
-# ============================================================
-# Name Extraction
-# ============================================================
+def extract_name_from_text(raw_text):
+    """
+    Tries to pull the candidate's name from the very top of their resume text.
+    Most resumes start with the person's name on the first 1-2 lines.
+    We skip blank lines, contact info lines (emails, phone numbers, URLs), and
+    lines that look like section headers. Whatever is left and is short enough
+    is assumed to be the name.
+    """
+    if not raw_text:
+        return None
 
-def extract_name_from_filename(filename):
-    """Extracts a human-readable name from the resume filename."""
+    lines = raw_text.strip().split('\n')
+
+    # Patterns we want to SKIP - these are NOT a person's name
+    skip_patterns = re.compile(
+        r'([@\d\(\)\+]|linkedin|github|http|www\.|gmail|yahoo|hotmail|'
+        r'resume|curriculum vitae|cv |portfolio|objective|summary|profile|'
+        r'address|phone|email|mobile|contact)',
+        re.IGNORECASE
+    )
+
+    # Sections headings that must NEVER be treated as a name
+    _SECTION_HEADER_BLACKLIST = {
+        "education", "experience", "skills", "projects", "objective",
+        "summary", "profile", "contact", "references", "certifications",
+        "achievements", "awards", "languages", "interests", "hobbies",
+        "work", "employment", "qualifications", "internship", "internships",
+        "activity", "activities", "courses", "coursework", "publications",
+        "personal info", "personal information", "personal details",
+        "employment history", "work experience", "professional experience",
+        "professional background", "internship experience", "academic projects",
+        "technical skills", "core competencies",
+    }
+
+    for line in lines[:10]:  # Only look at the first 10 lines
+        line = line.strip()
+
+        # Skip blank or very short lines
+        if len(line) < 2:
+            continue
+
+        # Skip lines that match contact/section patterns
+        if skip_patterns.search(line):
+            continue
+
+        # Skip lines that are too long to be a name (> 50 chars)
+        if len(line) > 50:
+            continue
+
+        words = line.split()
+
+        # Skip lines that exactly match a section heading (case-insensitive)
+        if line.strip().lower() in _SECTION_HEADER_BLACKLIST:
+            continue
+
+        # If it looks like 1-4 words of mostly letters, it's probably a name
+        if 1 <= len(words) <= 4 and re.match(r'^[A-Za-z][A-Za-z\s\.\-]+$', line):
+            return line.title()
+
+    return None
+
+
+def extract_name_from_filename(filename, raw_text=None):
+    """
+    Extracts a readable candidate name.
+    STEP 1: Try reading from resume text (top lines) — most accurate.
+    STEP 2: Fall back to cleaning the filename.
+    """
+    # Step 1: Try resume text first
+    if raw_text:
+        name_from_text = extract_name_from_text(raw_text)
+        if name_from_text:
+            return name_from_text
+
+    # Step 2: Clean the filename
     name = os.path.splitext(filename)[0]
 
-    # Remove common non-name words and digits
-    name = re.sub(r'(?i)(resume|cv|_resume|_cv|\d+)', '', name)
+    # Strip the UUID/hash prefix added by our uploader (e.g. '24f0f992_')
+    name = re.sub(r'^[0-9a-f]{6,}_', '', name, flags=re.IGNORECASE)
 
-    # Replace underscores and hyphens with spaces
-    name = name.replace("_", " ").replace("-", " ")
+    # Remove common noise words
+    name = re.sub(r'(?i)\b(resume|cv|curriculum|vitae|application|applicant|file|doc|updated?|final|new)\b', '', name)
 
-    # Clean up extra spaces and title case it
-    name = " ".join(name.split()).title().strip()
+    # Remove leftover digits and special characters except spaces/hyphens
+    name = re.sub(r'[^A-Za-z\s\-]', ' ', name)
 
-    # If we end up with an empty string just use the filename
-    if not name:
-        name = filename
+    # Replace hyphens/underscores with spaces
+    name = name.replace('-', ' ').replace('_', ' ')
 
-    return name
+    # Collapse whitespace and title-case
+    name = ' '.join(name.split()).title().strip()
+
+    return name if name else filename
+
+
+# ==================================================================
+# NEW: extract_candidate_info — pulls all structured fields from text
+# Added for the TabTransformer / hybrid scoring pipeline
+# ==================================================================
+
+# Degree keywords to look for in education section
+_DEGREE_KEYWORDS = [
+    "phd", "ph.d", "doctorate", "doctor of",
+    "m.tech", "m.e.", "m.s.", "master of", "mba", "mca", "m.sc", "msc", "m.com",
+    "b.tech", "b.e.", "b.s.", "b.sc", "bsc", "bca", "b.com", "bcom", "b.a.", "ba",
+    "bachelor of", "bachelor's", "be ", "degree",
+    "diploma", "polytechnic",
+]
+
+# Department keywords — used to infer department from text
+_DEPT_KEYWORDS = {
+    "IT":           ["software", "developer", "engineer", "programming", "computer science",
+                     "data science", "machine learning", "ai", "artificial intelligence",
+                     "web developer", "backend", "frontend", "full stack", "devops", "cloud",
+                     "cybersecurity", "database", "python", "java", "javascript"],
+    "HR":           ["human resources", "hr manager", "hr executive", "talent acquisition",
+                     "recruitment", "payroll", "employee relations", "hrbp", "workforce"],
+    "Finance":      ["finance", "accounting", "accountant", "financial analyst", "cpa",
+                     "tax", "audit", "bookkeeping", "chartered accountant", "ca ", "cfa"],
+    "Marketing":    ["marketing", "digital marketing", "seo", "content", "social media",
+                     "brand", "advertising", "market research", "campaign"],
+    "Sales":        ["sales", "business development", "account manager", "sales executive",
+                     "client acquisition", "lead generation", "b2b", "b2c"],
+    "Healthcare":   ["doctor", "nurse", "physician", "medical", "clinical", "pharmacy",
+                     "healthcare", "hospital", "patient care", "mbbs"],
+    "Engineering":  ["mechanical", "civil", "electrical", "electronics", "manufacturing",
+                     "autocad", "solidworks", "hvac", "robotics", "aerospace"],
+    "Operations":   ["operations", "supply chain", "logistics", "warehouse", "procurement",
+                     "vendor management", "inventory", "project manager"],
+}
+
+# Common job title patterns
+_JOB_ROLE_PATTERNS = [
+    r'(senior|junior|lead|principal|associate|chief|head of|vp of|director of)?\s*'
+    r'(software engineer|developer|data scientist|data analyst|ml engineer|'
+    r'product manager|project manager|business analyst|ui/ux designer|devops engineer|'
+    r'cloud engineer|full stack developer|backend developer|frontend developer|'
+    r'marketing manager|sales executive|hr manager|financial analyst|'
+    r'accountant|operations manager|supply chain analyst|content writer|'
+    r'graphic designer|qa engineer|test engineer|network engineer|'
+    r'data engineer|ai engineer|research analyst)',
+]
+
+
+
+
+def extract_candidate_info(raw_text):
+    """
+    Extracts all structured fields from raw resume text.
+    Returns a clean dictionary with all fields candidate_scorer.py needs.
+
+    Fields: name, email, phone, experience_years, education, skills,
+            department, job_role
+    """
+    text = str(raw_text or "")
+    text_lower = text.lower()
+
+    # ── 1. Email ─────────────────────────────────────────────────────
+    email = ""
+    email_match = re.search(
+        r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.?[A-Za-z]{2,}\b',
+        text
+    )
+    if email_match:
+        email = email_match.group(0).strip()
+
+    # ── 2. Phone ─────────────────────────────────────────────────────
+    phone = ""
+    # Try +91 format first, then plain 10-digit Indian number
+    phone_match = re.search(
+        r'(?:\+91[\s\-]?)?[6-9]\d{9}',
+        text
+    )
+    if not phone_match:
+        phone_match = re.search(
+            r'\b(?:\+\d{1,3}[\s\-]?)?\(?\d{3,5}\)?[\s\-]?\d{3,5}[\s\-]?\d{3,4}\b',
+            text
+        )
+    if phone_match:
+        phone = phone_match.group(0).strip()
+
+    # ── 3. Experience years ───────────────────────────────────────────
+    # reuse the existing extractor
+    experience_years = extract_experience_years(text)
+
+    # ── 4. Education ──────────────────────────────────────────────────
+    education = ""
+    _CLEAN_DEGREE_WORDS = [
+        "phd", "ph.d", "ph,d", "doctorate", "doctor of",
+        "m.tech", "m.e.", "m.s.", "m.s", "m,s", "master of", "mba", "mca", "m.sc", "msc",
+        "b.tech", "b.e.", "b.s.", "b.s", "b,s", "b.sc", "bsc", "bca", "b.com", "bcom",
+        "bachelor of", "bachelor's", "bachelor",
+        "diploma", "polytechnic",
+        "diploma", "polytechnic",
+    ]
+    for deg in _CLEAN_DEGREE_WORDS:
+        if deg in text_lower:
+            idx = text_lower.find(deg)
+            # Grab the full line that contains this degree keyword
+            line_start = text.rfind('\n', 0, idx) + 1
+            line_end   = text.find('\n', idx)
+            if line_end == -1:
+                line_end = len(text)
+            full_line = text[line_start:line_end].strip()
+            # Clean/shorten: remove years, "present", "–", and arrows
+            full_line = re.sub(r'\d{4}\s*[-–—]\s*(?:present|current|\d{4})?', '', full_line, flags=re.IGNORECASE)
+            full_line = re.sub(r'\s+', ' ', full_line).strip()
+            # Remove trailing punctuation or stray "-"
+            full_line = full_line.strip(' ,;–—-')
+            if len(full_line) > 3:
+                education = full_line
+                if deg in ["phd", "ph.d", "doctorate", "m.tech", "mba", "m.s."]:
+                    break  # stop at highest degree
+
+    # ── 5. Skills ─────────────────────────────────────────────────────
+    skills = []
+    # Find the Technical Skills section (or any skills section heading)
+    skills_section_match = re.search(
+        r'(?:technical\s*skills?|skills?|core\s*competencies?|key\s*skills?)'
+        r'\s*[:\-]?\s*\n([\s\S]{10,800}?)(?:\n[A-Z][A-Za-z\s]{3,}:|\Z)',
+        text, re.IGNORECASE
+    )
+    if skills_section_match:
+        skills_text = skills_section_match.group(1)
+        # Strip sub-headings like "Programming Languages:", "Frameworks:", etc.
+        skills_text = re.sub(
+            r'^[A-Za-z\s/&()]{4,40}:\s*',
+            '',
+            skills_text,
+            flags=re.MULTILINE
+        )
+        raw_skills = re.split(r'[,|\n•\-;/\t]+', skills_text)
+        skills = [s.strip() for s in raw_skills if 2 <= len(s.strip()) <= 45 and s.strip()]
+        # Remove obvious noise (long phrases or things with colons still)
+        skills = [s for s in skills if ':' not in s]
+        skills = skills[:40]
+
+    # Fall back to keyword matching if section extraction failed
+    if not skills:
+        skills = get_matched_skills(text)
+
+    # ── 6. Department (inferred from text keywords) ───────────────────
+    department = "Unknown"
+    dept_scores = {}
+    for dept, keywords in _DEPT_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in text_lower)
+        if score > 0:
+            dept_scores[dept] = score
+    if dept_scores:
+        department = max(dept_scores, key=dept_scores.get)
+
+    # ── 7. Job Role ───────────────────────────────────────────────────
+    job_role = ""
+
+    # Strategy A: The job title is almost always on line 2 of a resume
+    # (right under the name) — look for it in the first 5 lines
+    first_lines = text.strip().split('\n')[:8]
+    _title_pattern = re.compile(
+        r'\b(software\s+developer|software\s+engineer|data\s+scientist|data\s+analyst|'
+        r'ml\s+engineer|ai\s+engineer|data\s+engineer|full[\s\-]stack\s+developer|'
+        r'backend\s+developer|frontend\s+developer|web\s+developer|'
+        r'mobile\s+developer|android\s+developer|ios\s+developer|'
+        r'devops\s+engineer|cloud\s+engineer|security\s+engineer|'
+        r'product\s+manager|project\s+manager|business\s+analyst|'
+        r'ui[/\s]ux\s+designer|graphic\s+designer|'
+        r'marketing\s+manager|content\s+writer|'
+        r'hr\s+manager|hr\s+executive|talent\s+acquisition|'
+        r'financial\s+analyst|accountant|operations\s+manager|'
+        r'qa\s+engineer|test\s+engineer|network\s+engineer|'
+        r'research\s+analyst|system\s+administrator|database\s+administrator)\b',
+        re.IGNORECASE
+    )
+    for line in first_lines[1:5]:  # skip line 0 (the name)
+        m = _title_pattern.search(line)
+        if m:
+            job_role = m.group(0).strip().title()
+            break
+
+    # Strategy B: Fall back to searching the whole document
+    if not job_role:
+        m = _title_pattern.search(text)
+        if m:
+            job_role = m.group(0).strip().title()
+
+    # ── 8. Name (reuse existing function) ────────────────────────────
+    name = extract_name_from_text(text) or ""
+
+    return {
+        "name":             name,
+        "email":            email,
+        "phone":            phone,
+        "experience_years": experience_years,
+        "education":        education,
+        "skills":           skills,
+        "department":       department,
+        "job_role":         job_role,
+    }
