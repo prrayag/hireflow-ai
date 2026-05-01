@@ -964,18 +964,20 @@ def extract_candidate_info(raw_text):
 
     # ── 2. Phone ─────────────────────────────────────────────────────
     phone = ""
-    # Try +91 format first, then plain 10-digit Indian number
-    phone_match = re.search(
-        r'(?:\+91[\s\-]?)?[6-9]\d{9}',
-        text
-    )
-    if not phone_match:
-        phone_match = re.search(
-            r'\b(?:\+\d{1,3}[\s\-]?)?\(?\d{3,5}\)?[\s\-]?\d{3,5}[\s\-]?\d{3,4}\b',
-            text
-        )
-    if phone_match:
-        phone = phone_match.group(0).strip()
+    # Match Indian numbers with spaces e.g. "+91 98201 34567" or "+91-98201-34567"
+    # Pattern: optional +91 then 10 digits optionally split by spaces/dashes
+    phone_patterns = [
+        r'(?:\+91|91)[\s\-]?[6-9]\d{4}[\s\-]?\d{5}',   # +91 98201 34567
+        r'(?:\+91|91)[\s\-]?[6-9]\d{9}',               # +919820134567
+        r'[6-9]\d{4}[\s\-]?\d{5}',                     # 98201 34567
+        r'[6-9]\d{9}',                                  # 9820134567
+        r'\b(?:\+\d{1,3}[\s\-]?)?\(?\d{3,5}\)?[\s\-]?\d{3,5}[\s\-]?\d{3,4}\b',
+    ]
+    for pat in phone_patterns:
+        m = re.search(pat, text)
+        if m:
+            phone = m.group(0).strip()
+            break
 
     # ── 3. Experience years ───────────────────────────────────────────
     # reuse the existing extractor
@@ -1000,6 +1002,9 @@ def extract_candidate_info(raw_text):
             if line_end == -1:
                 line_end = len(text)
             full_line = text[line_start:line_end].strip()
+            # Skip lines that look like contact info (contain @, •, phone numbers)
+            if '@' in full_line or '•' in full_line:
+                continue
             # Clean/shorten: remove years, "present", "–", and arrows
             full_line = re.sub(r'\d{4}\s*[-–—]\s*(?:present|current|\d{4})?', '', full_line, flags=re.IGNORECASE)
             full_line = re.sub(r'\s+', ' ', full_line).strip()

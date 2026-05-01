@@ -414,6 +414,183 @@ def big_data_stats():
     }), 200
 
 
+
+
+@app.route("/api/charts", methods=["GET"])
+def generate_charts():
+    import io, base64
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
+    import numpy as np
+    from config import MONGO_URI
+
+    candidates = []
+    source = "json"
+    if MONGO_URI:
+        try:
+            from pymongo import MongoClient
+            client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
+            col = client["hireflow_db"]["candidates"]
+            projection = {
+                "_id": 0, "score": 1, "skills": 1, "matched_skills": 1,
+                "shortlisted": 1, "is_anomaly": 1, "name": 1,
+                "tab_transformer_score": 1, "vector_similarity_score": 1,
+                "tfidf_score": 1
+            }
+            raw = list(col.find({}, projection).limit(1000))
+            if raw:
+                candidates = raw
+                source = "mongodb"
+        except Exception as e:
+            print(f"[charts] MongoDB unavailable: {e}")
+
+    if not candidates:
+        data = load_json_data()
+        if data and data.get("batches"):
+            for batch in data["batches"]:
+                candidates.extend(batch.get("candidates", []))
+
+    if not candidates:
+        return jsonify({"error": "No data available"}), 404
+
+    plt.rcParams.update({
+        "figure.facecolor": "white", "axes.facecolor": "white",
+        "axes.edgecolor": "#cccccc", "axes.grid": True,
+        "grid.color": "#e0e0e0", "grid.linestyle": "-", "grid.linewidth": 0.8,
+        "axes.spines.top": False, "axes.spines.right": False,
+        "font.family": "DejaVu Sans", "font.size": 10,
+        "axes.titlesize": 12, "axes.titleweight": "bold",
+        "axes.labelsize": 10, "axes.labelcolor": "#333333",
+        "xtick.color": "#555555", "ytick.color": "#555555",
+        "figure.dpi": 130,
+    })
+
+    BLUE   = "#1f77b4"
+    ORANGE = "#ff7f0e"
+    GREEN  = "#2ca02c"
+
+    def to_b64(fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", facecolor="white")
+        buf.seek(0)
+        enc = base64.b64encode(buf.read()).decode("utf-8")
+        plt.close(fig)
+        return f"data:image/png;base64,{enc}"
+
+    charts = {}
+
+    # 1 -- Score Distribution
+    scores = [float(c.get("score", 0) or 0) for c in candidates]
+    labels = [f"{i*10}-{i*10+10}" for i in range(10)]
+    counts = [0] * 10
+    for s in scores:
+        counts[min(int(s // 10), 9)] += 1
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(labels, counts, color=BLUE, edgecolor="white", linewidth=0.6, zorder=3)
+    ax.set_title("Score Distribution")
+    ax.set_xlabel("Score Band (%)")
+    ax.set_ylabel("Number of Candidates")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+    for bar, cnt in zip(bars, counts):
+        if cnt > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
+                    str(cnt), ha="center", va="bottom", fontsize=8.5, color="#333333", fontweight="bold")
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    charts["score_distribution"] = to_b64(fig)
+
+    # 2 -- Hiring Funnel
+    total       = len(candidates)
+    parsed_ok   = len([c for c in candidates if c.get("name")])
+    high_score  = len([c for c in candidates if float(c.get("score", 0) or 0) >= 50])
+    shortlisted = len([c for c in candidates if c.get("shortlisted")])
+    no_anomaly  = len([c for c in candidates if not c.get("is_anomaly", False)])
+    stages  = ["Total Uploaded", "Parsed OK", "Score >= 50%", "Shortlisted", "No Anomalies"]
+    fvalues = [total, parsed_ok, high_score, shortlisted, no_anomaly]
+    fcolors = [BLUE, GREEN, ORANGE, "#9467bd", GREEN]
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.barh(stages[::-1], fvalues[::-1], color=fcolors[::-1],
+                   edgecolor="white", linewidth=0.6, zorder=3)
+    ax.set_title("Hiring Pipeline Funnel")
+    ax.set_xlabel("Number of Candidates")
+    ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+    for bar, val in zip(bars, fvalues[::-1]):
+        ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
+                str(val), va="center", fontsize=9, color="#333333", fontweight="bold")
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    charts["hiring_funnel"] = to_b64(fig)
+
+    # 3 -- Skill x Avg Score
+    skill_map = {}
+    for c in candidates:
+        s = float(c.get("score", 0) or 0)
+        for sk in (c.get("skills") or c.get("matched_skills") or [])[:6]:
+            key = str(sk).strip().title()
+            if key:
+                skill_map.setdefault(key, []).append(s)
+    items = sorted(
+        [(k, round(sum(v)/len(v), 1), len(v)) for k, v in skill_map.items()],
+        key=lambda x: x[1], reverse=True
+    )[:12]
+    if items:
+        sk_labels = [x[0] for x in items]
+        sk_scores = [x[1] for x in items]
+        sk_counts = [x[2] for x in items]
+        max_s = max(sk_scores) if sk_scores else 1
+        cmap = plt.get_cmap("Blues")
+        bcolors = [cmap(0.35 + 0.55 * (v / max_s)) for v in sk_scores]
+        fig, ax = plt.subplots(figsize=(8, 4))
+        bars = ax.barh(sk_labels[::-1], sk_scores[::-1],
+                       color=bcolors[::-1], edgecolor="white", linewidth=0.6, zorder=3)
+        ax.set_title("Skill x Avg Score")
+        ax.set_xlabel("Avg Score (%)")
+        ax.set_xlim(0, 108)
+        for bar, score, count in zip(bars, sk_scores[::-1], sk_counts[::-1]):
+            ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
+                    f"{score}%  ({count})", va="center", fontsize=8.5, color="#333333")
+        ax.set_axisbelow(True)
+        fig.tight_layout()
+        charts["skill_heatmap"] = to_b64(fig)
+    else:
+        charts["skill_heatmap"] = None
+
+    # 4 -- Score Components
+    tab_s   = [float(c.get("tab_transformer_score",   0) or 0) for c in candidates]
+    vec_s   = [float(c.get("vector_similarity_score", 0) or 0) for c in candidates]
+    tfidf_s = [float(c.get("tfidf_score",             0) or 0) for c in candidates]
+    avg_tab   = round(sum(tab_s)   / len(tab_s),   1) if tab_s   else 0
+    avg_vec   = round(sum(vec_s)   / len(vec_s),   1) if vec_s   else 0
+    avg_tfidf = round(sum(tfidf_s) / len(tfidf_s), 1) if tfidf_s else 0
+    comp_labels = ["TabTransformer\n(max 40)", "Vector Similarity\n(max 35)", "TF-IDF / Keyword\n(max 25)"]
+    comp_vals   = [avg_tab, avg_vec, avg_tfidf]
+    comp_max    = [40, 35, 25]
+    comp_colors = [BLUE, ORANGE, GREEN]
+    fig, ax = plt.subplots(figsize=(7, 4))
+    x = np.arange(len(comp_labels))
+    w = 0.35
+    ax.bar(x - w/2, comp_vals, w, label="Avg Achieved", color=comp_colors,
+           edgecolor="white", linewidth=0.6, zorder=3)
+    ax.bar(x + w/2, comp_max,  w, label="Maximum",
+           color="#dddddd", edgecolor="white", linewidth=0.6, zorder=3)
+    ax.set_title("Avg Score Components (all candidates)")
+    ax.set_ylabel("Points")
+    ax.set_xticks(x)
+    ax.set_xticklabels(comp_labels, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+    for xi, (val, mx) in enumerate(zip(comp_vals, comp_max)):
+        ax.text(xi - w/2, val + 0.4, str(val), ha="center", fontsize=8.5,
+                color="#333333", fontweight="bold")
+        ax.text(xi + w/2, mx  + 0.4, str(mx),  ha="center", fontsize=8.5, color="#888888")
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    charts["score_components"] = to_b64(fig)
+
+    return jsonify({"charts": charts, "source": source, "total": len(candidates)}), 200
+
 if __name__ == "__main__":
     print("starting HireFlow AI backend on http://localhost:5001")
     app.run(debug=True, port=5001)

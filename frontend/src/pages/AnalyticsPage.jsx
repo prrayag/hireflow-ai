@@ -1,379 +1,255 @@
-import React, { useEffect, useState, useCallback, useContext } from 'react';
-import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-    RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-} from 'recharts';
-import { ThemeContext } from '../hooks/useTheme';
+// AnalyticsPage.jsx — HireFlow AI
+// Charts generated server-side with real matplotlib, served as base64 PNG images.
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { API_BASE_URL } from '../config';
 import '../styles/analytics.css';
 
-/* ── Colour palette ── */
-const PALETTE = ['#3b7ef8','#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#60a5fa','#38bdf8','#34d399','#4ade80','#facc15'];
-const ACCENT  = '#3b7ef8';
-
-/* ── Custom SVG Gauge ── */
-function GaugeArc({ value, max = 100, color, label, sublabel }) {
-    const { theme } = useContext(ThemeContext);
-    const isDark = theme === 'dark';
-
-    const pct    = Math.min(Math.max(value / max, 0), 1);
-    const angle  = pct * 180;
-    const R = 60; const cx = 75; const cy = 75;
-    const toRad  = (deg) => (deg - 180) * (Math.PI / 180);
-    const endX   = cx + R * Math.cos(toRad(angle));
-    const endY   = cy + R * Math.sin(toRad(angle));
-    const large  = angle > 90 ? 1 : 0;
-
-    const trackStroke = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-    const textFill    = isDark ? '#f0f0f0' : '#0f1117';
-    const subFill     = isDark ? 'rgba(255,255,255,0.35)' : '#9ca3af';
-
+// ── Skeleton loader while chart is fetching ──────────────────────────────────
+function ChartSkeleton() {
     return (
-        <div className="gauge-card">
-            <svg viewBox="0 0 150 85" className="gauge-svg">
-                <path
-                    d={`M ${cx-R} ${cy} A ${R} ${R} 0 0 1 ${cx+R} ${cy}`}
-                    fill="none" stroke={trackStroke} strokeWidth="10" strokeLinecap="round"/>
-                {pct > 0.01 && (
-                    <path d={`M ${cx-R} ${cy} A ${R} ${R} 0 ${large} 1 ${endX} ${endY}`}
-                        fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"/>
+        <div style={{
+            width: '100%', height: '340px',
+            background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'skeleton-shimmer 1.4s infinite',
+            borderRadius: '8px',
+            border: '1px solid #e5e5e5',
+        }} />
+    );
+}
+
+// ── Single chart card ─────────────────────────────────────────────────────────
+function ChartCard({ title, description, imgSrc, loading }) {
+    return (
+        <div style={{
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '20px 20px 12px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        }}>
+            <div style={{ marginBottom: '10px' }}>
+                <h3 style={{
+                    margin: 0, fontSize: '0.93rem', fontWeight: 700,
+                    color: '#111827', fontFamily: 'Plus Jakarta Sans, sans-serif',
+                }}>{title}</h3>
+                {description && (
+                    <p style={{
+                        margin: '3px 0 0', fontSize: '0.78rem',
+                        color: '#6b7280', fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    }}>{description}</p>
                 )}
-                <text x={cx} y={cy-8} textAnchor="middle" fill={textFill} fontSize="17" fontWeight="800"
-                      fontFamily="Plus Jakarta Sans, sans-serif">
-                    {value}{max === 100 ? '%' : ''}
-                </text>
-                <text x={cx} y={cy+8} textAnchor="middle" fill={subFill} fontSize="8"
-                      fontFamily="Plus Jakarta Sans, sans-serif">
-                    {sublabel}
-                </text>
-            </svg>
-            <p className="gauge-label">{label}</p>
-        </div>
-    );
-}
-
-/* ── Custom Heatmap (pure CSS) ── */
-function HeatmapGrid({ data }) {
-    if (!data?.length) return <EmptyState />;
-    const maxScore = Math.max(...data.map(d => d.avgScore), 1);
-    return (
-        <div className="heatmap-grid">
-            {data.map((row, i) => {
-                const intensity = row.avgScore / maxScore;
-                const accentColor = PALETTE[Math.min(Math.floor(intensity * PALETTE.length), PALETTE.length - 1)];
-                return (
-                    <div key={i} className="heatmap-cell"
-                        style={{ borderLeftColor: accentColor, borderLeftWidth: '3px' }}>
-                        <span className="heatmap-skill">{row.skill}</span>
-                        <span className="heatmap-score">
-                            {row.avgScore}%
-                        </span>
-                        <span className="heatmap-count">{row.count} resume{row.count !== 1 ? 's' : ''}</span>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
-
-/* ── Custom Funnel (CSS bars) ── */
-function FunnelViz({ data }) {
-    if (!data?.length) return <EmptyState />;
-    const maxCount = Math.max(...data.map(d => d.count), 1);
-    return (
-        <div className="funnel-viz">
-            {data.map((stage, i) => {
-                const pct = (stage.count / maxCount) * 100;
-                return (
-                    <div key={i} className="funnel-stage">
-                        <div className="funnel-bar-wrap">
-                            <div className="funnel-bar-fill"
-                                style={{ width: `${pct}%`, background: PALETTE[i] }} />
-                        </div>
-                        <div className="funnel-meta">
-                            <span className="funnel-label">{stage.stage}</span>
-                            <span className="funnel-count" style={{ color: PALETTE[i] }}>{stage.count}</span>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
-
-/* ── Data Metrics strip ── */
-function MetaStrip({ meta, source }) {
-    if (!meta) return null;
-    const items = [
-        { label: 'Total Rows',    value: meta.totalRows },
-        { label: 'Columns',       value: meta.totalColumns },
-        { label: 'Dataset Size',  value: `${meta.datasetKB} KB` },
-        { label: 'Unique Roles',  value: meta.uniqueRoles },
-        { label: 'Unique Depts',  value: meta.uniqueDepts },
-        { label: 'Source',        value: source === 'mongodb' ? '🍃 MongoDB' : '📄 Local JSON' },
-    ];
-    return (
-        <div className="meta-strip">
-            {items.map((item, i) => (
-                <div key={i} className="meta-chip">
-                    <span className="meta-value">{item.value}</span>
-                    <span className="meta-label">{item.label}</span>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function EmptyState() {
-    return <div className="chart-empty"><p>Upload resumes to see data</p></div>;
-}
-
-function ChartTooltip({ active, payload, label }) {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="chart-tooltip">
-            {label && <p className="tooltip-label">{label}</p>}
-            {payload.map((p, i) => (
-                <p key={i} style={{ color: p.color || ACCENT }}>
-                    {p.name || p.dataKey}: <strong>{p.value}</strong>
-                </p>
-            ))}
-        </div>
-    );
-}
-
-/* ── Live indicator dot ── */
-function LiveDot({ source }) {
-    return (
-        <span className="live-dot-wrap">
-            <span className={`live-dot ${source === 'mongodb' ? 'live-dot-green' : 'live-dot-amber'}`} />
-            {source === 'mongodb' ? 'Live · MongoDB' : 'Local JSON'}
-        </span>
-    );
-}
-
-/* ══════════════════════════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════════════════════════ */
-export default function AnalyticsPage() {
-    const { theme } = useContext(ThemeContext);
-    const isDark = theme === 'dark';
-
-    /* Theme-aware tick colours for Recharts */
-    const tickMuted  = isDark ? 'rgba(255,255,255,0.30)' : 'rgba(0,0,0,0.35)';
-    const tickNormal = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
-    const gridStroke = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
-    const cursorFill = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-
-    const [data,      setData]      = useState(null);
-    const [lastFetch, setLastFetch] = useState(null);
-    const [countdown, setCountdown] = useState(30);
-
-    const REFRESH_S = 30;  // only poll every 30s — reduces backend load
-
-
-    const fetchData = useCallback(() => {
-        fetch('http://localhost:5001/api/big-data-stats')
-            .then(r => r.json())
-            .then(d => {
-                setData(d);
-                setLastFetch(new Date().toLocaleTimeString());
-                setCountdown(REFRESH_S);
-            })
-            .catch(() => {});
-    }, []);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
-
-    // Poll every 30s, but pause when tab is hidden
-    useEffect(() => {
-        let interval = null;
-        const start  = () => { interval = setInterval(fetchData, REFRESH_S * 1000); };
-        const stop   = () => { if (interval) clearInterval(interval); };
-        start();
-        const onVis = () => document.hidden ? stop() : (start(), fetchData());
-        document.addEventListener('visibilitychange', onVis);
-        return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
-    }, [fetchData]);
-
-    useEffect(() => {
-        const tick = setInterval(() => setCountdown(c => (c <= 1 ? REFRESH_S : c - 1)), 1000);
-        return () => clearInterval(tick);
-    }, []);
-
-    // No full-screen spinner — render immediately with empty placeholders
-
-    const empty   = !data || data.total_in_batch === 0;
-    const gauge   = data?.gauge   || {};
-    const hist    = data?.histogram || [];
-    const funnel  = data?.funnel  || [];
-    const heatmap = data?.heatmap || [];
-    const radar   = data?.radar   || [];
-    const skills  = data?.skills  || [];
-    const meta    = data?.meta;
-    const source  = data?.source  || 'json';
-
-    return (
-        <div className="analytics-page">
-            <div className="analytics-dot-grid" />
-
-            {/* ── Header ── */}
-            <div className="analytics-header">
-                <div>
-                    <h1 className="analytics-title">Analytics</h1>
-                    <p className="analytics-subtitle">
-                        {gauge.totalCandidates ?? 0} candidates across all uploads
-                        {lastFetch && <span className="refresh-info"> · refreshed {lastFetch} · next in {countdown}s</span>}
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <LiveDot source={source} />
-                    <div className="analytics-badge">5 Vs of Big Data</div>
-                </div>
             </div>
-
-            {/* ── Data Metrics Strip ── */}
-            <MetaStrip meta={meta} source={source} />
-
-            {empty && (
-                <div className="analytics-empty-banner">
-                    📂 No data yet — upload resumes from the Upload page first.
+            {loading ? (
+                <ChartSkeleton />
+            ) : imgSrc ? (
+                <img
+                    src={imgSrc}
+                    alt={title}
+                    style={{
+                        width: '100%', height: 'auto',
+                        display: 'block', borderRadius: '4px',
+                        border: '1px solid #f0f0f0',
+                    }}
+                />
+            ) : (
+                <div style={{
+                    height: '200px', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', color: '#9ca3af', fontSize: '0.85rem',
+                    border: '1px dashed #e5e7eb', borderRadius: '8px',
+                }}>
+                    No data available
                 </div>
             )}
+        </div>
+    );
+}
 
-            {/* ══ ROW 1: Gauges (VALUE) ══ */}
-            <section className="analytics-section">
-                <h2 className="section-title">
-                    <span className="section-dot" style={{ background: ACCENT }} />
-                    Overview Gauges
-                    <span className="section-tag">VALUE</span>
-                </h2>
-                <p className="section-desc">Overall pipeline health at a glance</p>
-                <div className="gauges-row">
-                    <GaugeArc value={gauge.avgScore ?? 0}        max={100} color="#3b7ef8" label="Avg Score"         sublabel="out of 100" />
-                    <GaugeArc value={gauge.shortlistRate ?? 0}   max={100} color="#34d399" label="Shortlist Rate"    sublabel="% of total" />
-                    <GaugeArc value={gauge.anomalyRate ?? 0}     max={100} color="#f87171" label="Anomaly Rate"      sublabel="% flagged" />
-                    <GaugeArc value={gauge.totalCandidates ?? 0} max={Math.max(gauge.totalCandidates ?? 1, 20)} color="#a78bfa" label="Total Candidates" sublabel="in MongoDB" />
-                </div>
-            </section>
-
-            {/* ══ ROW 2: Histogram + Funnel ══ */}
-            <div className="analytics-row-2">
-                {/* CHART 1 — Score Distribution Histogram (VOLUME) */}
-                <section className="analytics-section chart-half">
-                    <h2 className="section-title">
-                        <span className="section-dot" style={{ background: '#6366f1' }} />
-                        Score Distribution
-                        <span className="section-tag">VOLUME</span>
-                    </h2>
-                    <p className="section-desc">Candidates per score band across all uploads</p>
-                    {!hist.some(d => d.count > 0) ? <EmptyState /> : (
-                        <ResponsiveContainer width="100%" height={230}>
-                            <BarChart data={hist} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
-                                <XAxis dataKey="range"
-                                    tick={{ fill: tickMuted, fontSize: 10 }}
-                                    axisLine={false} tickLine={false} />
-                                <YAxis allowDecimals={false}
-                                    tick={{ fill: tickMuted, fontSize: 10 }}
-                                    axisLine={false} tickLine={false} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ fill: cursorFill }} />
-                                <Bar dataKey="count" name="Candidates" radius={[6,6,0,0]}>
-                                    {hist.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    )}
-                </section>
-
-                {/* CHART 2 — Hiring Funnel (VELOCITY) */}
-                <section className="analytics-section chart-half">
-                    <h2 className="section-title">
-                        <span className="section-dot" style={{ background: '#8b5cf6' }} />
-                        Hiring Funnel
-                        <span className="section-tag">VELOCITY</span>
-                    </h2>
-                    <p className="section-desc">Candidates at each stage of the pipeline</p>
-                    <FunnelViz data={funnel} />
-                </section>
-            </div>
-
-            {/* ══ ROW 3: Heatmap (VARIETY) ══ */}
-            <section className="analytics-section">
-                <h2 className="section-title">
-                    <span className="section-dot" style={{ background: '#38bdf8' }} />
-                    Skill × Score Heatmap
-                    <span className="section-tag">VARIETY</span>
-                </h2>
-                <p className="section-desc">Average score of candidates listing each skill — darker blue = stronger signal</p>
-                <HeatmapGrid data={heatmap} />
-            </section>
-
-            {/* ══ ROW 4: Radar + Skill Bar ══ */}
-            <div className="analytics-row-2">
-                {/* CHART 4 — Radar / Spider Chart (VERACITY) */}
-                <section className="analytics-section chart-half">
-                    <h2 className="section-title">
-                        <span className="section-dot" style={{ background: '#34d399' }} />
-                        Skill Radar
-                        <span className="section-tag">VERACITY</span>
-                    </h2>
-                    <p className="section-desc">Frequency of top skills across all candidates</p>
-                    {radar.length < 3 ? <EmptyState /> : (
-                        <ResponsiveContainer width="100%" height={260}>
-                            <RadarChart data={radar} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
-                                <PolarGrid stroke={gridStroke} />
-                                <PolarAngleAxis dataKey="subject"
-                                    tick={{ fill: tickNormal, fontSize: 11 }} />
-                                <PolarRadiusAxis tick={false} axisLine={false} />
-                                <Radar name="Frequency" dataKey="A"
-                                    stroke={ACCENT} fill={ACCENT} fillOpacity={0.18}
-                                    strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} />
-                                <Tooltip content={<ChartTooltip />} />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    )}
-                </section>
-
-                {/* CHART 5 — Top Skills Horizontal Bar (VALUE) */}
-                <section className="analytics-section chart-half">
-                    <h2 className="section-title">
-                        <span className="section-dot" style={{ background: '#facc15' }} />
-                        Top Skills Frequency
-                        <span className="section-tag">VALUE</span>
-                    </h2>
-                    <p className="section-desc">Most demanded skills across all uploaded resumes</p>
-                    {!skills.length ? <EmptyState /> : (
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={skills} layout="vertical" margin={{ top: 8, right: 40, left: 10, bottom: 0 }}>
-                                <XAxis type="number"
-                                    tick={{ fill: tickMuted, fontSize: 10 }}
-                                    axisLine={false} tickLine={false} />
-                                <YAxis type="category" dataKey="subject" width={90}
-                                    tick={{ fill: tickNormal, fontSize: 12 }}
-                                    axisLine={false} tickLine={false} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ fill: cursorFill }} />
-                                <Bar dataKey="A" name="Count" radius={[0,6,6,0]}>
-                                    {skills.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    )}
-                </section>
-            </div>
-
-            {/* ══ 5 Vs Footer ══ */}
-            <div className="five-vs-strip">
-                {[
-                    { v: 'Volume',   desc: 'All candidates across every batch',       color: PALETTE[0] },
-                    { v: 'Velocity', desc: 'Real-time refresh every 10s',              color: PALETTE[2] },
-                    { v: 'Variety',  desc: 'Skills, roles, education, exp, scores',   color: PALETTE[4] },
-                    { v: 'Veracity', desc: 'Anomaly detection + skill validation',     color: PALETTE[6] },
-                    { v: 'Value',    desc: 'Ranked shortlist + AI scoring',            color: PALETTE[8] },
-                ].map(({ v, desc, color }) => (
-                    <div key={v} className="five-v-chip" style={{ borderColor: `${color}40` }}>
-                        <span className="five-v-letter" style={{ color }}>{v}</span>
-                        <span className="five-v-desc">{desc}</span>
+// ── Meta strip (key numbers) ──────────────────────────────────────────────────
+function MetaStrip({ stats }) {
+    const items = [
+        { label: 'Total Candidates', value: stats.total ?? '—' },
+        { label: 'Avg Score',        value: stats.avgScore != null ? `${stats.avgScore}%` : '—' },
+        { label: 'Shortlist Rate',   value: stats.shortlistRate != null ? `${stats.shortlistRate}%` : '—' },
+        { label: 'Anomaly Rate',     value: stats.anomalyRate != null ? `${stats.anomalyRate}%` : '—' },
+        { label: 'Source',           value: stats.source === 'mongodb' ? '🟢 MongoDB' : '🟡 Local JSON' },
+    ];
+    return (
+        <div style={{
+            display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px',
+        }}>
+            {items.map(({ label, value }) => (
+                <div key={label} style={{
+                    background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+                    padding: '10px 18px', flex: '1 1 140px', minWidth: '120px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}>
+                    <div style={{ fontSize: '0.68rem', color: '#9ca3af', fontWeight: 600,
+                                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                                  fontFamily: 'Plus Jakarta Sans, sans-serif', marginBottom: '4px' }}>
+                        {label}
                     </div>
-                ))}
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827',
+                                  fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                        {value}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function AnalyticsPage() {
+    const [charts, setCharts]   = useState({});
+    const [stats,  setStats]    = useState({});
+    const [loading, setLoading] = useState(true);
+    const [error,   setError]   = useState(null);
+    const [lastRefresh, setLastRefresh] = useState(null);
+
+    const fetchCharts = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const [chartRes, statsRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/api/charts`),
+                fetch(`${API_BASE_URL}/api/big-data-stats`),
+            ]);
+
+            if (!chartRes.ok) throw new Error(`Charts endpoint returned ${chartRes.status}`);
+
+            const chartData = await chartRes.json();
+            const statsData = statsRes.ok ? await statsRes.json() : {};
+
+            setCharts(chartData.charts || {});
+            setStats({
+                total:         chartData.total,
+                source:        chartData.source,
+                avgScore:      statsData.gauge?.avgScore,
+                shortlistRate: statsData.gauge?.shortlistRate,
+                anomalyRate:   statsData.gauge?.anomalyRate,
+            });
+            setLastRefresh(new Date());
+        } catch (err) {
+            console.error('[AnalyticsPage] fetch error:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch on mount
+    useEffect(() => { fetchCharts(); }, [fetchCharts]);
+
+    // Poll every 60s (charts are heavier, no need to poll fast)
+    useEffect(() => {
+        const id = setInterval(() => {
+            if (!document.hidden) fetchCharts();
+        }, 60_000);
+        return () => clearInterval(id);
+    }, [fetchCharts]);
+
+    return (
+        <div style={{
+            minHeight: '100vh',
+            background: '#f9fafb',
+            padding: '32px 24px 64px',
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+        }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              marginBottom: '8px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                        <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: '#111827' }}>
+                            Analytics
+                        </h1>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+                            {stats.total != null ? `${stats.total} candidates` : 'Loading...'} ·
+                            {lastRefresh ? ` Updated ${lastRefresh.toLocaleTimeString()}` : ' Fetching...'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={fetchCharts}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 16px', borderRadius: '8px', border: '1px solid #e5e7eb',
+                            background: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+                            fontSize: '0.82rem', fontWeight: 600, color: '#374151',
+                            opacity: loading ? 0.6 : 1,
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
+                        }}
+                    >
+                        {loading ? 'Generating...' : '↻ Refresh Charts'}
+                    </button>
+                </div>
+
+                {/* Error banner */}
+                {error && (
+                    <div style={{
+                        background: '#fef2f2', border: '1px solid #fecaca',
+                        borderRadius: '8px', padding: '12px 16px', marginBottom: '20px',
+                        color: '#dc2626', fontSize: '0.85rem',
+                    }}>
+                        ⚠ Could not load charts: {error}. Make sure the backend is running on port 5001.
+                    </div>
+                )}
+
+                {/* Meta strip */}
+                <MetaStrip stats={stats} />
+
+                {/* ── Charts grid ── */}
+                <style>{`
+                    @keyframes skeleton-shimmer {
+                        0%   { background-position: -200% 0; }
+                        100% { background-position:  200% 0; }
+                    }
+                    .charts-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                    }
+                    @media (max-width: 768px) {
+                        .charts-grid { grid-template-columns: 1fr; }
+                    }
+                `}</style>
+
+                <div className="charts-grid">
+                    <ChartCard
+                        title="Score Distribution"
+                        description="How many candidates fall in each 10-point score band"
+                        imgSrc={charts.score_distribution}
+                        loading={loading}
+                    />
+                    <ChartCard
+                        title="Hiring Pipeline Funnel"
+                        description="Candidate drop-off at each stage of the pipeline"
+                        imgSrc={charts.hiring_funnel}
+                        loading={loading}
+                    />
+                    <ChartCard
+                        title="Skill × Avg Score"
+                        description="Which skills correlate with higher-scoring candidates"
+                        imgSrc={charts.skill_heatmap}
+                        loading={loading}
+                    />
+                    <ChartCard
+                        title="Score Components Breakdown"
+                        description="Average achieved vs maximum for each scoring component"
+                        imgSrc={charts.score_components}
+                        loading={loading}
+                    />
+                </div>
+
+                {/* Note */}
+                <p style={{
+                    marginTop: '28px', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center',
+                }}>
+                    Charts generated server-side with Python matplotlib · Data from {stats.source === 'mongodb' ? 'MongoDB Atlas' : 'local JSON'}
+                </p>
+
             </div>
         </div>
     );
