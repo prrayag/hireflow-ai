@@ -591,6 +591,119 @@ def generate_charts():
 
     return jsonify({"charts": charts, "source": source, "total": len(candidates)}), 200
 
+
+
+@app.route("/api/analytics-data", methods=["GET"])
+def analytics_data():
+    """
+    Fast JSON endpoint — returns raw data for frontend Chart.js rendering.
+    No image generation. Returns in ~100-200ms.
+    """
+    candidates = []
+    source = "json"
+
+    from config import MONGO_URI
+    if MONGO_URI:
+        try:
+            from pymongo import MongoClient
+            client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
+            col    = client["hireflow_db"]["candidates"]
+            projection = {
+                "_id": 0, "score": 1, "skills": 1, "matched_skills": 1,
+                "shortlisted": 1, "is_anomaly": 1, "name": 1,
+                "tab_transformer_score": 1, "vector_similarity_score": 1,
+                "tfidf_score": 1, "department": 1, "experience_years": 1
+            }
+            raw = list(col.find({}, projection).limit(2000))
+            if raw:
+                candidates = raw
+                source = "mongodb"
+        except Exception as e:
+            print(f"[analytics-data] MongoDB unavailable: {e}")
+
+    if not candidates:
+        data = load_json_data()
+        if data and data.get("batches"):
+            for batch in data["batches"]:
+                candidates.extend(batch.get("candidates", []))
+
+    if not candidates:
+        return jsonify({"error": "No data"}), 404
+
+    scores = [float(c.get("score", 0) or 0) for c in candidates]
+
+    # ── 1. Score Distribution ──────────────────────────────────────────
+    band_labels = [f"{i*10}-{i*10+10}" for i in range(10)]
+    band_counts = [0] * 10
+    for s in scores:
+        band_counts[min(int(s // 10), 9)] += 1
+
+    # ── 2. Hiring Funnel ──────────────────────────────────────────────
+    total       = len(candidates)
+    parsed_ok   = len([c for c in candidates if c.get("name")])
+    high_score  = len([c for c in candidates if float(c.get("score", 0) or 0) >= 50])
+    shortlisted = len([c for c in candidates if c.get("shortlisted")])
+    no_anomaly  = len([c for c in candidates if not c.get("is_anomaly", False)])
+
+    funnel_stages = ["Total Uploaded", "Parsed OK", "Score ≥ 50%", "Shortlisted", "No Anomalies"]
+    funnel_values = [total, parsed_ok, high_score, shortlisted, no_anomaly]
+
+    # ── 3. Skill × Avg Score ──────────────────────────────────────────
+    skill_map = {}
+    for c in candidates:
+        s = float(c.get("score", 0) or 0)
+        for sk in (c.get("skills") or c.get("matched_skills") or [])[:6]:
+            key = str(sk).strip().title()
+            if key and 2 < len(key) < 30:
+                skill_map.setdefault(key, []).append(s)
+
+    top_skills = sorted(
+        [(k, round(sum(v)/len(v), 1), len(v)) for k, v in skill_map.items() if len(v) >= 2],
+        key=lambda x: x[1], reverse=True
+    )[:12]
+
+    # ── 4. Score Components ───────────────────────────────────────────
+    tab_s   = [float(c.get("tab_transformer_score",   0) or 0) for c in candidates]
+    vec_s   = [float(c.get("vector_similarity_score", 0) or 0) for c in candidates]
+    tfidf_s = [float(c.get("tfidf_score",             0) or 0) for c in candidates]
+
+    avg_tab   = round(sum(tab_s)   / len(tab_s),   1) if tab_s   else 0
+    avg_vec   = round(sum(vec_s)   / len(vec_s),   1) if vec_s   else 0
+    avg_tfidf = round(sum(tfidf_s) / len(tfidf_s), 1) if tfidf_s else 0
+
+    # ── 5. Summary stats ──────────────────────────────────────────────
+    avg_score      = round(sum(scores) / len(scores), 1) if scores else 0
+    shortlist_rate = round((shortlisted / total) * 100, 1) if total else 0
+    anomaly_rate   = round(((total - no_anomaly) / total) * 100, 1) if total else 0
+
+    return jsonify({
+        "source": source,
+        "total": total,
+        "summary": {
+            "avg_score":      avg_score,
+            "shortlist_rate": shortlist_rate,
+            "anomaly_rate":   anomaly_rate,
+        },
+        "score_distribution": {
+            "labels": band_labels,
+            "counts": band_counts,
+        },
+        "hiring_funnel": {
+            "stages": funnel_stages,
+            "values": funnel_values,
+        },
+        "skill_scores": {
+            "skills":     [x[0] for x in top_skills],
+            "avg_scores": [x[1] for x in top_skills],
+            "counts":     [x[2] for x in top_skills],
+        },
+        "score_components": {
+            "labels":   ["TabTransformer\n(max 40)", "Vector Similarity\n(max 35)", "TF-IDF Match\n(max 25)"],
+            "achieved": [avg_tab, avg_vec, avg_tfidf],
+            "maximums": [40, 35, 25],
+        },
+    }), 200
+
 if __name__ == "__main__":
     print("starting HireFlow AI backend on http://localhost:5001")
     app.run(debug=True, port=5001)
