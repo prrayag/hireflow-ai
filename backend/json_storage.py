@@ -1,16 +1,20 @@
 # json_storage.py - handles saving extracted resume data to JSON
 # This JSON file serves as the primary data input for future ML model training
 # and sorting/ranking logic. Every upload appends a new batch to this file.
+# Data is also pushed to MongoDB Atlas in the background for real-time storage.
 
 import os
 import json
 import threading
 from datetime import datetime
 from pymongo import MongoClient
-from config import MONGO_URI
+from config import MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION
 
 # JSON file location — stored in the backend directory
 JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), "candidates_data.json")
+
+# Current scoring pipeline version — tracked in each batch
+SCORER_VERSION = "v2.0-composite"
 
 
 def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
@@ -23,8 +27,8 @@ def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
         
     try:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-        db = client['hireflow_db']
-        collection = db['candidates']
+        db = client[MONGO_DB_NAME]
+        collection = db[MONGO_COLLECTION]
         
         # Prepare documents for insertion by attaching batch metadata
         documents = []
@@ -33,6 +37,7 @@ def _save_to_mongo(batch_candidates, batch_id, job_description, uploaded_at):
             doc['batch_id'] = batch_id
             doc['job_description'] = job_description
             doc['uploaded_at'] = uploaded_at
+            doc['scorer_version'] = SCORER_VERSION
             documents.append(doc)
             
         if documents:
@@ -64,14 +69,30 @@ def _load_existing_data():
     }
 
 
+def _deduplicate_skills(skills_list):
+    """
+    Remove duplicate skills (case-insensitive) while preserving order.
+    E.g., ['Python', 'python', 'PYTHON', 'Java'] -> ['Python', 'Java']
+    """
+    if not skills_list:
+        return []
+    seen = set()
+    deduped = []
+    for skill in skills_list:
+        key = skill.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(skill.strip())
+    return deduped
+
+
 def save_to_json(candidates_list, batch_id, job_description=""):
     """
     Saves a batch of scored candidates to the JSON file.
     Each batch contains all candidate data from one upload session.
     
     This function APPENDS to the existing JSON file — it never overwrites
-    previous batches. This is critical because the JSON acts as training
-    data for the ML model.
+    previous batches. Deduplicates skills before saving.
     
     Args:
         candidates_list: list of candidate dicts (from the scorer)
@@ -87,8 +108,14 @@ def save_to_json(candidates_list, batch_id, job_description=""):
     batch_candidates = []
     for cand in candidates_list:
         # Save every field the scorer returns — strip only the raw_text
-        # (it's large and not needed for dashboard display)
         candidate_entry = {k: v for k, v in cand.items() if k != "raw_text"}
+        
+        # Deduplicate skills lists
+        if "skills" in candidate_entry:
+            candidate_entry["skills"] = _deduplicate_skills(candidate_entry["skills"])
+        if "matched_skills" in candidate_entry:
+            candidate_entry["matched_skills"] = _deduplicate_skills(candidate_entry["matched_skills"])
+        
         # Ensure rank is always present
         candidate_entry.setdefault("rank", 0)
         batch_candidates.append(candidate_entry)
@@ -99,6 +126,7 @@ def save_to_json(candidates_list, batch_id, job_description=""):
         "uploaded_at": now,
         "job_description": job_description,
         "candidate_count": len(batch_candidates),
+        "scorer_version": SCORER_VERSION,
         "candidates": batch_candidates
     }
     
@@ -135,13 +163,11 @@ def get_all_resumes_for_training():
     """
     Flattens all batches and returns a list of all resume entries.
     This is the format the ML model will consume for training.
-    Each entry has: name, raw_text, matched_skills, score, filename, etc.
     """
     data = _load_existing_data()
     all_resumes = []
     for batch in data.get("batches", []):
         for candidate in batch.get("candidates", []):
-            # include batch context for the model
             candidate_with_context = {
                 **candidate,
                 "batch_id": batch["batch_id"],

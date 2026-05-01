@@ -25,7 +25,7 @@ EXPERIENCE_FLOOR = 0.1
 SKILL_KEYWORDS = [
     # IT & Software
     "python", "java", "javascript", "sql", "react", "machine learning", "data analysis", "aws", "docker",
-    "kubernetes", "git", "html", "css", "node.js", "flask", "tensorcflow", "pandas", "mongodb", "rest api",
+    "kubernetes", "git", "html", "css", "node.js", "flask", "tensorflow", "pandas", "mongodb", "rest api",
     "agile", "c++", "c#", "linux", "cloud computing", "rust", "go", "typescript", "ruby", "django", "vue.js",
     "angular", "spring boot", "postgresql", "mysql", "redis", "elasticsearch", "graphql", "microservices",
     "ci/cd", "jenkins", "terraform", "ansible", "azure", "gcp", "data science", "deep learning", "nlp",
@@ -850,6 +850,17 @@ def extract_name_from_text(raw_text):
         # Skip lines that exactly match a section heading (case-insensitive)
         if line.strip().lower() in _SECTION_HEADER_BLACKLIST:
             continue
+        
+        # Skip lines that START WITH a section heading word (e.g. "Certifications ...")
+        first_word = words[0].lower().rstrip(':')
+        if first_word in {
+            "education", "experience", "skills", "projects", "objective",
+            "summary", "profile", "contact", "references", "certifications",
+            "achievements", "awards", "languages", "interests", "hobbies",
+            "work", "employment", "qualifications", "internships", "courses",
+            "publications", "activities", "coursework"
+        }:
+            continue
 
         # If it looks like 1-4 words of mostly letters, it's probably a name
         if 1 <= len(words) <= 4 and re.match(r'^[A-Za-z][A-Za-z\s\.\-]+$', line):
@@ -1011,11 +1022,19 @@ def extract_candidate_info(raw_text):
                     break  # stop at highest degree
 
     # ── 5. Skills ─────────────────────────────────────────────────────
-    skills = []
-    # Find the Technical Skills section (or any skills section heading)
+    # Strategy: Use keyword matching (from SKILL_KEYWORDS) as the primary source,
+    # since that's a curated, clean list. Then supplement with section-based
+    # extraction for skills not in our keyword list (but with strict filtering).
+    
+    # Primary: keyword-matched skills (always clean)
+    keyword_skills = get_matched_skills(text)
+    
+    # Supplement: try to extract from the skills section header
+    section_skills = []
     skills_section_match = re.search(
         r'(?:technical\s*skills?|skills?|core\s*competencies?|key\s*skills?)'
-        r'\s*[:\-]?\s*\n([\s\S]{10,800}?)(?:\n[A-Z][A-Za-z\s]{3,}:|\Z)',
+        r'\s*[:\-]?\s*\n([\s\S]{10,500}?)(?:\n\s*(?:EDUCATION|EXPERIENCE|PROJECTS|'
+        r'CERTIFICATIONS|WORK|EMPLOYMENT|OBJECTIVE|SUMMARY|PROFESSIONAL)\b|\Z)',
         text, re.IGNORECASE
     )
     if skills_section_match:
@@ -1028,12 +1047,64 @@ def extract_candidate_info(raw_text):
             flags=re.MULTILINE
         )
         raw_skills = re.split(r'[,|\n•\-;/\t]+', skills_text)
-        skills = [s.strip() for s in raw_skills if 2 <= len(s.strip()) <= 45 and s.strip()]
-        # Remove obvious noise (long phrases or things with colons still)
-        skills = [s for s in skills if ':' not in s]
-        skills = skills[:40]
+        
+        # Strict noise filters for section-extracted skills
+        _noise_blacklist = {
+            "education", "experience", "skills", "projects", "objective",
+            "summary", "profile", "contact", "references", "certifications",
+            "achievements", "awards", "languages", "interests", "hobbies",
+            "work", "employment", "qualifications", "internships", "courses",
+            "personal details", "personal information", "work experience",
+            "professional experience", "technical skills", "core competencies",
+        }
+        _noise_verbs = re.compile(
+            r'\b(developed|maintained|collaborated|managed|designed|implemented|'
+            r'created|built|worked|led|analyzed|prepared|delivered|functional|'
+            r'quality|software\.|applications|responsible|high quality|'
+            r'participated|contributed|utilized|conducted|ensured|assisted)\b',
+            re.IGNORECASE
+        )
+        _noise_edu = re.compile(
+            r'\b(b\.s\.|m\.s\.|ph\.d|bachelor|master|university|college|institute|'
+            r'school|degree|diploma|graduated)\b', re.IGNORECASE
+        )
+        _noise_company = re.compile(
+            r'\b(LLC|Inc|Corp|Ltd|Solutions|Technologies|Services|Company|Pvt|'
+            r'Enterprises|Group|Partners|Global|Associates)\b', re.IGNORECASE
+        )
+        
+        for s in raw_skills:
+            s = s.strip()
+            if len(s) < 2 or len(s) > 25:
+                continue
+            if s.lower() in _noise_blacklist:
+                continue
+            if ':' in s:
+                continue
+            if _noise_verbs.search(s):
+                continue
+            if _noise_edu.search(s):
+                continue
+            if _noise_company.search(s):
+                continue
+            if re.match(r'^\d{4}', s):  # starts with a year
+                continue
+            if s.endswith(')'):  # "Engineer (2015"
+                continue
+            if len(s.split()) > 4:  # real skills are max 4 words
+                continue
+            section_skills.append(s)
+    
+    # Merge: keyword skills first, then unique section skills
+    keyword_set_lower = {s.lower() for s in keyword_skills}
+    skills = list(keyword_skills)
+    for s in section_skills:
+        if s.lower() not in keyword_set_lower:
+            skills.append(s)
+            keyword_set_lower.add(s.lower())
+    skills = skills[:30]  # cap at 30 to keep it manageable
 
-    # Fall back to keyword matching if section extraction failed
+    # Fall back to keyword matching if nothing was extracted at all
     if not skills:
         skills = get_matched_skills(text)
 

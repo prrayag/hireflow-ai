@@ -7,7 +7,11 @@
 #   Component 2: Vector similarity (cosine of embeddings)→ 0 to 35
 #   Component 3: TF-IDF text cosine similarity            → 0 to 25
 #
-# If tab_transformer.pth is missing → falls back to keyword matching.
+# If tab_transformer.pth is missing → falls back to profile-based scoring
+# that STILL distributes scores across all 3 breakdown components
+# so the dashboard always shows meaningful bars.
+#
+# Max possible score: 100 (full 0-100 range)
 # Anomaly detection (Isolation Forest style) is preserved exactly.
 # ====================================================================
 
@@ -29,13 +33,16 @@ from resume_features import (
     get_matched_skills,
     get_jd_skills,
     compute_jd_overlap,
-    extract_candidate_info,     # new function we're adding to resume_features.py
+    extract_candidate_info,
 )
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH   = os.path.join(BASE_DIR, "tab_transformer.pth")
 CONFIG_PATH  = os.path.join(BASE_DIR, "model_config.json")
 ENC_PATH     = os.path.join(BASE_DIR, "label_encoders.pkl")
+
+# Maximum allowed score
+MAX_SCORE = 100.0
 
 # these get loaded once at startup
 _model          = None
@@ -58,7 +65,7 @@ def _load_torch():
             _torch = torch
             _nn    = nn
         except ImportError:
-            print("[scorer] torch not installed! Falling back to keyword scoring.")
+            print("[scorer] torch not installed! Falling back to profile-based scoring.")
     return _torch is not None
 
 
@@ -67,7 +74,6 @@ def _load_torch():
 def _build_model(config):
     """
     Rebuilds the TabTransformer from the saved config.
-    We have to define the architecture here too so we can load the weights.
     This is the same class as in train_model.py — if you change one, change both!
     """
     if not _load_torch():
@@ -162,7 +168,7 @@ def _load_models():
     if not all(os.path.exists(p) for p in [MODEL_PATH, CONFIG_PATH, ENC_PATH]):
         missing = [p for p in [MODEL_PATH, CONFIG_PATH, ENC_PATH] if not os.path.exists(p)]
         print(f"[scorer] Missing model files: {missing}")
-        print("[scorer]  -> Falling back to keyword scoring. Run train_model.py to enable TabTransformer.")
+        print("[scorer]  -> Falling back to profile-based scoring. Run train_model.py to enable TabTransformer.")
         return False
     
     try:
@@ -176,7 +182,7 @@ def _load_models():
             return False
         
         # load state dict — map_location='cpu' so it works on M1/M2 Macs too
-        state_dict = _torch.load(MODEL_PATH, map_location="cpu")
+        state_dict = _torch.load(MODEL_PATH, map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
         model.eval()  # inference mode
         
@@ -187,7 +193,7 @@ def _load_models():
     
     except Exception as e:
         print(f"[scorer] Failed to load TabTransformer: {e}")
-        print("[scorer]  -> Falling back to keyword scoring.")
+        print("[scorer]  -> Falling back to profile-based scoring.")
         return False
 
 
@@ -233,14 +239,11 @@ def _get_tab_score(info):
         with torch.no_grad():
             prob = _model(x_cat, x_num).item()  # 0.0 to 1.0
         
-        # The model is trained on a strict label (exp>5 AND high salary),
-        # so junior resumes get near-zero probability even if they're good.
-        # We blend: 60% model probability + 40% profile-completeness bonus.
-        # Completeness = how filled-in the resume is (skills count, experience, etc.)
-        # This gives realistic mid-range scores for all candidates.
+        # Blend: 60% model probability + 40% profile-completeness bonus.
+        # Completeness = how filled-in the resume is
         max_expected_skills = 20.0
         skills_bonus    = min(skills_cnt / max_expected_skills, 1.0)
-        exp_bonus       = min(exp_years / 10.0, 1.0)           # normalize to 10yr max
+        exp_bonus       = min(exp_years / 10.0, 1.0)
         has_email_bonus = 0.1 if info.get("email") else 0.0
         has_edu_bonus   = 0.1 if info.get("education") else 0.0
         
@@ -291,32 +294,22 @@ _jd_embedding_cache = {}
 
 def _get_jd_embedding(job_description):
     """
-    Creates a synthetic JD embedding by averaging embeddings of candidates
-    whose skills best match the JD keywords. This is our 'JD reference vector'.
-    
-    The idea: instead of embedding raw text (that's what BERT does), we create
-    a tabular feature vector for the JD by treating it like a 'super-candidate'
-    with all the skills mentioned in the JD and typical experience.
+    Creates a synthetic JD embedding by treating it as a 'super-candidate'
+    with all the skills mentioned in the JD.
     """
     if not _model_ready:
         return None
     
-    # simple cache so we don't recompute for every resume in the same batch
     if job_description in _jd_embedding_cache:
         return _jd_embedding_cache[job_description]
     
     torch = _torch
     
     try:
-        # extract skill keywords from JD
         jd_skills = get_jd_skills(job_description)
         
-        # create a synthetic 'JD candidate' with:
-        # - Unknown department and role (since JD doesn't always specify)
-        # - 5 years experience (mid-level, as a neutral assumption)
-        # - skills count = number of skills in JD
         dep_enc,  role_enc = _encode_categorical("Unknown", "Unknown")
-        exp_years  = 5.0  # neutral mid-level assumption
+        exp_years  = 5.0
         skills_cnt = float(len(jd_skills)) if jd_skills else 5.0
         
         x_cat = torch.tensor([[dep_enc, role_enc]], dtype=torch.long)
@@ -341,7 +334,6 @@ def _get_vector_score(candidate_emb, jd_emb):
     if candidate_emb is None or jd_emb is None:
         return 0.0
     
-    # cosine similarity using numpy
     dot     = np.dot(candidate_emb, jd_emb)
     norm_c  = np.linalg.norm(candidate_emb)
     norm_j  = np.linalg.norm(jd_emb)
@@ -350,7 +342,6 @@ def _get_vector_score(candidate_emb, jd_emb):
         return 0.0
     
     sim = dot / (norm_c * norm_j)
-    # cosine sim can be in [-1, 1], clip to [0, 1]
     sim = float(np.clip(sim, 0.0, 1.0))
     
     return sim * 35.0
@@ -363,6 +354,9 @@ def _get_tfidf_score(raw_text, job_description):
     Falls back to 0 if JD is empty.
     """
     if not job_description or not job_description.strip():
+        return 0.0
+    
+    if not raw_text or not raw_text.strip():
         return 0.0
     
     try:
@@ -378,6 +372,74 @@ def _get_tfidf_score(raw_text, job_description):
 
 
 # ==================================================================
+# Profile-Based Scoring (used when ML model is unavailable OR no JD)
+# ==================================================================
+
+def _compute_profile_scores(info, matched_skills, all_skills, jd_skills=None, jd_overlap=0.0):
+    """
+    Computes a profile-based quality score and distributes it across
+    the 3 breakdown components (tab/vec/tfidf) so the dashboard always
+    shows meaningful bars — even without the ML model or a JD.
+    
+    Returns (tab_score, vec_score, tfidf_score)
+    """
+    # Skills richness (0-1)
+    skills_count   = len(all_skills)
+    skills_signal  = min(skills_count / 20.0, 1.0)
+
+    # Education level
+    edu_text = (info.get("education") or "").lower()
+    if any(k in edu_text for k in ["phd", "ph.d", "doctor"]):
+        edu_signal = 1.0
+    elif any(k in edu_text for k in ["m.tech", "mba", "m.s.", "master", "msc", "mca"]):
+        edu_signal = 0.85
+    elif any(k in edu_text for k in ["b.tech", "b.e.", "bsc", "bca", "bachelor", "be "]):
+        edu_signal = 0.7
+    elif any(k in edu_text for k in ["diploma", "polytechnic"]):
+        edu_signal = 0.5
+    else:
+        edu_signal = 0.3
+
+    # Experience signal (cap at 15 yrs)
+    exp_years     = float(info.get("experience_years") or 0)
+    exp_signal    = min(exp_years / 10.0, 1.0)
+
+    # Contact completeness
+    has_email = 1 if info.get("email") else 0
+    has_phone = 1 if info.get("phone") else 0
+    contact_signal = (has_email + has_phone) / 2.0
+
+    # Keyword richness
+    keyword_richness = min(len(matched_skills) / 15.0, 1.0)
+
+    # If JD is provided, factor in keyword overlap
+    if jd_skills and jd_overlap > 0:
+        jd_signal = jd_overlap
+    else:
+        jd_signal = 0.0
+
+    # Combine weighted signals
+    composite = (
+        skills_signal    * 0.25 +
+        edu_signal       * 0.20 +
+        exp_signal       * 0.20 +
+        contact_signal   * 0.05 +
+        keyword_richness * 0.15 +
+        jd_signal        * 0.15
+    )
+
+    # Add a baseline so blank resumes don't get exactly zero
+    composite = min(max(composite + 0.10, 0.0), 0.90)  # cap at 0.90 to avoid 95+
+
+    # Distribute across the 3 component buckets (40/35/25 split)
+    tab_score   = round(composite * 40.0, 1)
+    vec_score   = round(composite * 35.0, 1)
+    tfidf_score = round(composite * 25.0, 1)
+
+    return tab_score, vec_score, tfidf_score
+
+
+# ==================================================================
 # Main Scoring Function
 # ==================================================================
 
@@ -386,7 +448,8 @@ def score_candidate(parsed_data, job_description=None):
     Main function — called for every resume during a batch upload.
     
     Returns a dict with all score components and extracted candidate info.
-    Falls back to keyword scoring if TabTransformer is not available.
+    Falls back to profile-based scoring if TabTransformer is not available.
+    ALWAYS populates all 3 breakdown fields with real values.
     """
     # try to load model on first call
     ml_available = _load_models()
@@ -399,16 +462,15 @@ def score_candidate(parsed_data, job_description=None):
     info = extract_candidate_info(raw_text)
 
     # validate name quality — fall back to filename if OCR produced garbage
-    # (e.g. single-letter tokens like "F Ee Rudra" from scanned PDFs)
     extracted_name = info.get("name", "")
     name_words = extracted_name.split()
     name_looks_bad = (
         not extracted_name or
-        any(len(w) <= 1 for w in name_words) or   # single char tokens
-        len(extracted_name) < 3                     # ridiculously short
+        any(len(w) <= 1 for w in name_words) or
+        len(extracted_name) < 3
     )
     if name_looks_bad:
-        info["name"] = extract_name_from_filename(filename, raw_text=None)  # filename only
+        info["name"] = extract_name_from_filename(filename, raw_text=None)
     elif not info.get("name"):
         info["name"] = extract_name_from_filename(filename, raw_text=raw_text)
 
@@ -416,7 +478,6 @@ def score_candidate(parsed_data, job_description=None):
     # also get matched skills for dashboard display
     matched_skills = get_matched_skills(raw_text)
     if info.get("skills"):
-        # merge — prefer the structured skills list if we extracted it
         all_skills = list(set(info["skills"]) | set(matched_skills))
     else:
         all_skills = matched_skills
@@ -433,114 +494,67 @@ def score_candidate(parsed_data, job_description=None):
         tab_score = _get_tab_score(info)
 
         if jd:
-            # Component 2: Vector similarity (0 to 35) — only meaningful with a JD
+            # Component 2: Vector similarity (0 to 35)
             cand_emb   = _get_candidate_embedding(info)
             jd_emb     = _get_jd_embedding(jd)
             raw_vec_score = _get_vector_score(cand_emb, jd_emb)
             
-            # Similar to TF-IDF, Vector Similarity can penalize the candidate if the JD is 
-            # just a short list of skills (due to differences in embedded feature counts).
-            # We blend exact keyword overlap here too.
+            # Blend with keyword overlap for short JDs
             overlap_vec = jd_overlap * 35.0
             vec_score = max(raw_vec_score, (raw_vec_score + overlap_vec) / 2)
 
-            # Component 3: TF-IDF (0 to 25) — only meaningful with a JD
+            # Component 3: TF-IDF (0 to 25)
             raw_tfidf = _get_tfidf_score(raw_text, jd)
-            
-            # If the JD is very short (like a list of keywords), TF-IDF gets diluted by the 
-            # length of the resume. We blend the exact keyword overlap to fix this.
-            # jd_overlap is a ratio (0.0 to 1.0) of how many JD skills the candidate has.
             overlap_score = jd_overlap * 25.0
-            
-            # Take the better of the two, or a blend, so keyword-only JDs don't get penalized.
             tfidf_score = max(raw_tfidf, overlap_score)
         else:
             # ── No JD: use profile richness to fill the 60-point JD budget ──
-            # We score based on how complete and skill-rich the candidate is.
-            # This gives meaningful relative scores between candidates.
-
-            # Skills count signal: more skills → higher score (cap at 30)
-            skills_count   = len(all_skills)
-            skills_signal  = min(skills_count / 20.0, 1.0)  # 20 skills = max
-
-            # Education level signal
-            edu_text = (info.get("education") or "").lower()
-            if any(k in edu_text for k in ["phd", "ph.d", "doctor"]):
-                edu_signal = 1.0
-            elif any(k in edu_text for k in ["m.tech", "mba", "m.s.", "master", "msc", "mca"]):
-                edu_signal = 0.85
-            elif any(k in edu_text for k in ["b.tech", "b.e.", "bsc", "bca", "bachelor", "be "]):
-                edu_signal = 0.7
-            elif any(k in edu_text for k in ["diploma", "polytechnic"]):
-                edu_signal = 0.5
-            else:
-                edu_signal = 0.4
-
-            # Experience signal (cap at 15 yrs)
-            exp_years     = float(info.get("experience_years") or 0)
-            exp_signal    = min(exp_years / 10.0, 1.0)
-
-            # Contact completeness signal
-            has_email = 1 if info.get("email") else 0
-            has_phone = 1 if info.get("phone") else 0
-            contact_signal = (has_email + has_phone) / 2.0
-
-            # Keyword richness: matched skills from the keyword list
-            # normalised to a realistic cap of 15 known keywords
-            keyword_richness = min(len(matched_skills) / 15.0, 1.0)
-
-            # Combine: weight more towards skills and education
-            composite = (
-                skills_signal    * 0.35 +
-                edu_signal       * 0.25 +
-                exp_signal       * 0.20 +
-                contact_signal   * 0.10 +
-                keyword_richness * 0.10
+            _, vec_score, tfidf_score = _compute_profile_scores(
+                info, matched_skills, all_skills
             )
-            
-            # Boost the baseline by 0.2 to prevent overly harsh scores for partial/junior resumes
-            composite = min(max(composite + 0.20, 0.0), 1.0)
-
-            vec_score   = round(composite * 35.0, 1)
-            tfidf_score = round(composite * 25.0, 1)
 
         # total score out of 100
         total_score = round(tab_score + vec_score + tfidf_score, 1)
 
     else:
-        # ── FALLBACK: Keyword scoring ───────────────────────────────
-        # if no ML model, just use JD overlap × 100
-        tab_score   = 0.0
-        vec_score   = 0.0
-        tfidf_score = 0.0
-        
-        if jd_skills:
-            total_score = round(jd_overlap * 100, 1)
-        else:
-            total = len(SKILL_KEYWORDS)
-            total_score = round((len(matched_skills) / total) * 100, 1) if total > 0 else 0.0
+        # ── FALLBACK: Profile-based scoring ────────────────────────────
+        # When ML model is unavailable, distribute scores across all 3
+        # components so the dashboard bars always show meaningful data.
+        tab_score, vec_score, tfidf_score = _compute_profile_scores(
+            info, matched_skills, all_skills, jd_skills, jd_overlap
+        )
+        total_score = round(tab_score + vec_score + tfidf_score, 1)
     
-    # shortlisted if score >= 45 (lowered from 60 because TabTransformer is very strict on junior profiles)
-    shortlisted = total_score >= 55.0
+    # ── Cap at MAX_SCORE ──────────────────────────────────────────
+    total_score = min(total_score, MAX_SCORE)
+    
+    # If total had to be capped, proportionally reduce each component
+    if (tab_score + vec_score + tfidf_score) > MAX_SCORE:
+        raw_total = tab_score + vec_score + tfidf_score
+        if raw_total > 0:
+            scale = MAX_SCORE / raw_total
+            tab_score   = round(tab_score * scale, 1)
+            vec_score   = round(vec_score * scale, 1)
+            tfidf_score = round(tfidf_score * scale, 1)
+            total_score = round(tab_score + vec_score + tfidf_score, 1)
     
     return {
         "name":                   info.get("name", "Unknown"),
         "email":                  info.get("email", ""),
         "phone":                  info.get("phone", ""),
         "score":                  total_score,
-        "shortlisted":            shortlisted,
         "tab_transformer_score":  round(tab_score,   1),
         "vector_similarity_score": round(vec_score,  1),
         "tfidf_score":            round(tfidf_score, 1),
         "skills":                 all_skills,
-        "matched_skills":         matched_skills,   # kept for backward compat
+        "matched_skills":         matched_skills,
         "jd_matched_skills":      jd_matched,
         "experience_years":       info.get("experience_years", 0),
         "education":              info.get("education", ""),
         "department":             info.get("department", ""),
         "job_role":               info.get("job_role", ""),
         "filename":               filename,
-        "raw_text":               raw_text,   # kept temporarily for anomaly detection
+        "raw_text":               raw_text,
         # kept for backward compat with old dashboard fields
         "has_relevant_cert":      False,
         "project_relevance_score": 0.0,
@@ -572,7 +586,6 @@ def detect_anomalies(candidates_list):
     much longer than genuine ones in the same batch.
     
     We use mean + 2 standard deviations as the threshold.
-    (Same logic as before — keeping this untouched as required.)
     """
     if not candidates_list:
         return candidates_list

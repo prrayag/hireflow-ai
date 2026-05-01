@@ -1,13 +1,20 @@
 # train_model.py — HireFlow AI
 # ====================================================================
-# This replaces the old Random Forest with a TabTransformer model.
+# TabTransformer training pipeline.
 # TabTransformer = Transformer attention on categorical features (like
 # Department, JobRole) + regular MLP on numerical features.
 #
-# We spent like 3 days figuring out the embedding dimensions lol.
-# The key insight is: categorical features go through attention layers
-# and numerical features are just layer-normalized directly.
-# Then we concatenate everything and pass through a small MLP.
+# The target label is now a composite "quality score" instead of the
+# old binary (experience>5 AND salary>median) which was way too strict
+# and caused all junior candidates to score near zero.
+#
+# New label logic:
+#   - experience_norm (0-1) weighted 40%
+#   - skills_count_norm (0-1) weighted 35%
+#   - salary_percentile (0-1) weighted 25%
+#   - shortlisted = 1 if composite >= 0.40
+#
+# This produces a more balanced dataset and realistic predictions.
 # ====================================================================
 
 import os
@@ -25,7 +32,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.inspection import permutation_importance
 
 # figure out paths relative to this file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -80,24 +86,38 @@ df["skills_count"] = df["Skills"].apply(count_skills_in_list)
 print(f"  Engineered skills_count. Mean: {df['skills_count'].mean():.1f}")
 
 # ==================================================================
-# STEP 2 — Create the target variable
+# STEP 2 — Create the target variable (IMPROVED)
 # ==================================================================
-print("\n[Step 2] Engineering target variable...")
+print("\n[Step 2] Engineering target variable (composite quality score)...")
 
 # fill any missing values in these key columns
 df["Experience_Years"] = pd.to_numeric(df["Experience_Years"], errors="coerce").fillna(0)
 df["Expected_Salary"]  = pd.to_numeric(df["Expected_Salary"], errors="coerce").fillna(0)
 
-# shortlisted = 1 if experienced AND well-paid candidate (above median salary)
-# this is our proxy label since we don't have actual HR decisions in the dataset
-median_salary = df["Expected_Salary"].median()
-print(f"  Median Expected_Salary: {median_salary}")
+# Composite quality scoring — much more balanced than the old binary label
+# which required BOTH experience>5 AND salary>median (too strict)
 
-df["shortlisted"] = (
-    (df["Experience_Years"] > 5) & (df["Expected_Salary"] > median_salary)
-).astype(int)
+# Normalize experience: cap at 15 years, so 7.5 years = 0.5
+exp_norm = (df["Experience_Years"].clip(0, 15) / 15.0)
+
+# Normalize skills count: cap at 15 skills
+skills_norm = (df["skills_count"].clip(0, 15) / 15.0)
+
+# Salary percentile (rank-based, 0 to 1)
+salary_pctile = df["Expected_Salary"].rank(pct=True).fillna(0.5)
+
+# Composite score: weighted average
+composite = (
+    exp_norm    * 0.40 +
+    skills_norm * 0.35 +
+    salary_pctile * 0.25
+)
+
+# Shortlisted if composite >= 0.40 (more balanced threshold)
+df["shortlisted"] = (composite >= 0.40).astype(int)
 
 shortlisted_count = df["shortlisted"].sum()
+print(f"  Composite score range: {composite.min():.3f} to {composite.max():.3f}")
 print(f"  Shortlisted: {shortlisted_count} / {len(df)} ({shortlisted_count/len(df)*100:.1f}%)")
 
 # drop salary now — we don't want the model to "cheat" by seeing it
@@ -136,7 +156,7 @@ print(f"  Saved label encoders to {ENC_PATH}")
 # ==================================================================
 print("\n[Step 4] Building TabTransformer architecture...")
 
-# hyperparameters — took us a while to settle on these
+# hyperparameters
 EMBED_DIM    = 32   # each categorical feature gets a 32-dim embedding
 NUM_HEADS    = 4    # multi-head attention with 4 heads
 NUM_LAYERS   = 2    # 2 Transformer encoder layers
@@ -144,7 +164,7 @@ NUM_CAT      = len(cat_cols)    # 2 categorical features
 NUM_NUM      = 2                # 2 numerical features: Experience_Years, skills_count
 DROPOUT      = 0.1
 BATCH_SIZE   = 32
-EPOCHS       = 30
+EPOCHS       = 50   # increased from 30 for better convergence
 LR           = 0.001
 
 # number of unique values per categorical column (for embedding table size)
@@ -153,22 +173,17 @@ cat_vocab_sizes = [len(label_encoders[col].classes_) for col in cat_cols]
 class MultiHeadSelfAttention(nn.Module):
     """
     Simple multi-head self-attention block.
-    We implemented this ourselves instead of using nn.TransformerEncoderLayer
-    so we understand what's actually happening inside the Transformer.
-    
     Input:  (batch, seq_len, embed_dim)   — seq_len = number of cat features
     Output: (batch, seq_len, embed_dim)
     """
     def __init__(self, embed_dim, num_heads, dropout=0.1):
         super().__init__()
-        # embed_dim must be divisible by num_heads
         assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
         
         self.num_heads = num_heads
         self.head_dim  = embed_dim // num_heads
-        self.scale     = self.head_dim ** -0.5  # scaling factor from "Attention is All You Need"
+        self.scale     = self.head_dim ** -0.5
         
-        # single weight matrix that projects input to Q, K, V all at once
         self.qkv_proj  = nn.Linear(embed_dim, 3 * embed_dim)
         self.out_proj   = nn.Linear(embed_dim, embed_dim)
         self.dropout_l  = nn.Dropout(dropout)
@@ -177,31 +192,22 @@ class MultiHeadSelfAttention(nn.Module):
     def forward(self, x):
         batch, seq, d_model = x.shape
         
-        # project to Q, K, V
-        qkv = self.qkv_proj(x)  # (batch, seq, 3 * embed_dim)
-        # split into 3 chunks: Q, K, V
+        qkv = self.qkv_proj(x)
         q, k, v = qkv.chunk(3, dim=-1)
         
-        # reshape to (batch, num_heads, seq, head_dim)
         def reshape_for_heads(t):
             return t.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
         
         q, k, v = reshape_for_heads(q), reshape_for_heads(k), reshape_for_heads(v)
         
-        # scaled dot-product attention
-        # attn_weights shape: (batch, num_heads, seq, seq)
         attn_weights = torch.matmul(q, k.transpose(-2, -1)) * self.scale
         attn_weights = torch.softmax(attn_weights, dim=-1)
         attn_weights = self.dropout_l(attn_weights)
         
-        # apply attention to values
-        attn_out = torch.matmul(attn_weights, v)  # (batch, heads, seq, head_dim)
-        
-        # merge heads back: (batch, seq, embed_dim)
+        attn_out = torch.matmul(attn_weights, v)
         attn_out = attn_out.transpose(1, 2).contiguous().view(batch, seq, d_model)
         attn_out = self.out_proj(attn_out)
         
-        # residual connection + layer norm (same as original Transformer paper)
         return self.norm(x + attn_out)
 
 
@@ -226,26 +232,20 @@ class TabTransformerModel(nn.Module):
         self.num_cat   = len(cat_vocab_sizes)
         self.num_num   = num_num_features
         
-        # one embedding table per categorical feature
-        # +1 vocab size for safety (handles unseen categories during inference)
         self.embeddings = nn.ModuleList([
             nn.Embedding(vocab_size + 1, embed_dim)
             for vocab_size in cat_vocab_sizes
         ])
         
-        # stack of Transformer attention blocks
         self.attention_layers = nn.ModuleList([
             MultiHeadSelfAttention(embed_dim, num_heads, dropout)
             for _ in range(num_layers)
         ])
         
-        # layer norm for numerical features (standard practice in TabTransformer)
         self.num_norm = nn.LayerNorm(num_num_features)
         
-        # combined dimension after flattening cat embeddings + numerical
         combined_dim = self.num_cat * embed_dim + num_num_features
         
-        # final MLP classifier head
         self.mlp = nn.Sequential(
             nn.Linear(combined_dim, 64),
             nn.ReLU(),
@@ -256,8 +256,6 @@ class TabTransformerModel(nn.Module):
             nn.Sigmoid()
         )
         
-        # we also want the 32-dim embedding for vector similarity
-        # this is the intermediate representation before the final sigmoid
         self.embedding_layer = nn.Sequential(
             nn.Linear(combined_dim, 64),
             nn.ReLU(),
@@ -267,43 +265,21 @@ class TabTransformerModel(nn.Module):
         )
     
     def _get_combined_features(self, x_cat, x_num):
-        """
-        Shared feature extraction used by both forward() and get_embedding().
-        Returns the combined representation before the final classifier.
-        """
-        # embed each categorical feature separately
-        # each embedding: (batch, embed_dim)
         cat_embeds = [emb(x_cat[:, i]) for i, emb in enumerate(self.embeddings)]
-        
-        # stack into (batch, num_cat, embed_dim) for attention
         cat_stack = torch.stack(cat_embeds, dim=1)
-        
-        # pass through attention layers
         for attn_layer in self.attention_layers:
             cat_stack = attn_layer(cat_stack)
-        
-        # flatten: (batch, num_cat * embed_dim)
         cat_flat = cat_stack.view(cat_stack.size(0), -1)
-        
-        # normalize numerical features
         num_normed = self.num_norm(x_num)
-        
-        # concatenate categorical + numerical
         combined = torch.cat([cat_flat, num_normed], dim=1)
         return combined
     
     def forward(self, x_cat, x_num):
-        """Standard forward pass — returns probability (0 to 1)."""
         combined = self._get_combined_features(x_cat, x_num)
         out = self.mlp(combined)
         return out.squeeze(1)
     
     def get_embedding(self, x_cat, x_num):
-        """
-        Returns the 32-dimensional embedding vector for a candidate.
-        This is used for vector similarity scoring in candidate_scorer.py.
-        We use the second-to-last MLP layer output (before final sigmoid).
-        """
         combined = self._get_combined_features(x_cat, x_num)
         embedding = self.embedding_layer(combined)
         return embedding
@@ -319,7 +295,6 @@ X = df.drop(columns=["shortlisted"])
 y = df["shortlisted"].values
 
 # separate categorical and numerical features
-# order matters here — must match what candidate_scorer.py sends
 x_cat_data = X[cat_cols].values.astype(np.int64)
 x_num_data = X[["Experience_Years", "skills_count"]].values.astype(np.float32)
 y_data = y.astype(np.float32)
@@ -353,7 +328,7 @@ print("\n[Step 6] Training TabTransformer...")
 
 model     = TabTransformerModel(cat_vocab_sizes, EMBED_DIM, NUM_HEADS, NUM_LAYERS, NUM_NUM, DROPOUT)
 optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-criterion = nn.BCELoss()  # Binary Cross Entropy for binary classification
+criterion = nn.BCELoss()
 
 model.train()
 for epoch in range(1, EPOCHS + 1):
@@ -367,7 +342,7 @@ for epoch in range(1, EPOCHS + 1):
         epoch_loss += loss.item()
     
     avg_loss = epoch_loss / len(train_loader)
-    if epoch % 5 == 0:
+    if epoch % 10 == 0 or epoch == 1:
         print(f"  Epoch {epoch:2d}/{EPOCHS} | Loss: {avg_loss:.4f}")
 
 print("  Training complete!")
@@ -397,7 +372,6 @@ ax.set(xticks=[0, 1], yticks=[0, 1],
        yticklabels=["Not Shortlisted", "Shortlisted"],
        ylabel="True Label", xlabel="Predicted Label",
        title="TabTransformer — Confusion Matrix")
-# add text annotations inside the boxes
 for i in range(2):
     for j in range(2):
         ax.text(j, i, str(cm[i, j]), ha='center', va='center',
@@ -410,13 +384,9 @@ print(f"  Confusion matrix saved: {CM_PATH}")
 # ==================================================================
 # STEP 8 — Approximate Feature Importance via Permutation
 # ==================================================================
-# Since TabTransformer doesn't have native feature importance like Random Forest,
-# we approximate it using permutation importance — we shuffle one feature at a time
-# and measure how much accuracy drops. More drop = more important feature.
 print("\n[Step 8] Computing permutation feature importance...")
 
 def model_predict(x_cat_np, x_num_np):
-    """Helper to run model inference from numpy arrays."""
     with torch.no_grad():
         x_cat_t = torch.tensor(x_cat_np, dtype=torch.long)
         x_num_t = torch.tensor(x_num_np, dtype=torch.float32)
@@ -428,20 +398,16 @@ baseline_acc  = accuracy_score(y_test, model_predict(x_cat_test, x_num_test))
 importance_scores = []
 
 for i, feat_name in enumerate(feature_names):
-    # shuffle this feature across all test samples
     shuffled_cat = x_cat_test.copy()
     shuffled_num = x_num_test.copy()
     
     if i < len(cat_cols):
-        # it's a categorical feature — shuffle the i-th column
         np.random.shuffle(shuffled_cat[:, i])
     else:
-        # it's a numerical feature
         num_i = i - len(cat_cols)
         np.random.shuffle(shuffled_num[:, num_i])
     
     perm_acc = accuracy_score(y_test, model_predict(shuffled_cat, shuffled_num))
-    # importance = how much accuracy dropped when this feature was randomized
     importance_scores.append(baseline_acc - perm_acc)
     print(f"  {feat_name}: importance = {baseline_acc - perm_acc:.4f}")
 
@@ -481,6 +447,12 @@ model_config = {
 with open(CONFIG_PATH, "w") as f:
     json.dump(model_config, f, indent=2)
 print(f"  Model config saved: {CONFIG_PATH}")
+
+# verify label_encoders.pkl was saved
+if os.path.exists(ENC_PATH):
+    print(f"  Label encoders verified: {ENC_PATH}")
+else:
+    print(f"  WARNING: Label encoders file NOT found at {ENC_PATH}!")
 
 print("\n" + "=" * 60)
 print("  TabTransformer saved successfully")

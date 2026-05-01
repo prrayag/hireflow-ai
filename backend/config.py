@@ -6,8 +6,13 @@ import os
 # needing to be changed.
 BACKEND_URL = os.environ.get("HIREFLOW_BACKEND_URL", "http://localhost:5001")
 
-# Future: PostgreSQL on AWS RDS
-# DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:pass@host:5432/hireflow")
-
 # MongoDB Atlas connection string
-MONGO_URI = "mongodb+srv://admin:hireflow1234%40studio@hireflowai.sfqk6hv.mongodb.net/?appName=HireFlowAI"
+# Set MONGO_URI environment variable in production; falls back to this default for local dev.
+MONGO_URI = os.environ.get(
+    "MONGO_URI",
+    "mongodb+srv://admin:hireflow1234%40studio@hireflowai.sfqk6hv.mongodb.net/?appName=HireFlowAI"
+)
+
+# MongoDB database and collection names
+MONGO_DB_NAME = "hireflow_db"
+MONGO_COLLECTION = "candidates"

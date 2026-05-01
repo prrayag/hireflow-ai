@@ -41,11 +41,11 @@ function Dashboard() {
 
     // stats
     const totalResumes  = candidates.length;
-    const shortlisted   = candidates.filter(c => c.shortlisted).length;
     const flagged       = candidates.filter(c => c.is_anomaly).length;
     const avgScore      = totalResumes > 0
         ? (candidates.reduce((s, c) => s + c.score, 0) / totalResumes).toFixed(1)
         : '—';
+    const highScorers   = candidates.filter(c => c.score >= 70).length;
     const topCandidate  = totalResumes > 0 ? (candidates[0]?.name || '—') : '—';
 
     // filters
@@ -98,8 +98,8 @@ function Dashboard() {
                         </div>
                         <div className="stat-box">
                             <div className="stat-icon-bar" style={{ background: '#22c55e' }}></div>
-                            <div className="stat-value">{shortlisted}</div>
-                            <div className="stat-label">Shortlisted</div>
+                            <div className="stat-value">{highScorers}</div>
+                            <div className="stat-label">Score 70+</div>
                         </div>
                         <div className="stat-box">
                             <div className="stat-icon-bar" style={{ background: '#ef4444' }}></div>

@@ -1,5 +1,5 @@
 // CandidateTable.jsx — HireFlow AI  
-// Redesigned: expandable rows, score breakdown, dark but readable.
+// Expandable rows, score breakdown, matched skill highlighting.
 
 import { useState } from 'react';
 import '../styles/dashboard.css';
@@ -34,28 +34,41 @@ function BreakdownBar({ value, max, color }) {
     );
 }
 
-// ── Skill pills ───────────────────────────────────────────────────────────────
-function SkillPills({ skills, limit = 8 }) {
+// ── Skill pills with matched highlighting ─────────────────────────────────────
+function SkillPills({ skills, matchedSkills, limit = 10 }) {
     const [expanded, setExpanded] = useState(false);
     const list = skills || [];
-    if (list.length === 0) return <span style={{ color: '#4a4a60', fontSize: '0.82rem' }}>No skills extracted</span>;
+    if (list.length === 0) return <span className="no-skills-text">No skills extracted</span>;
+
+    // Build a set of matched skills for quick lookup (case-insensitive)
+    const matchedSet = new Set((matchedSkills || []).map(s => s.toLowerCase().trim()));
 
     const visible   = expanded ? list : list.slice(0, limit);
     const remaining = list.length - limit;
 
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-            {visible.map((skill, i) => (
-                <span key={i} className="skill-pill">{skill}</span>
-            ))}
+            {visible.map((skill, i) => {
+                const isMatched = matchedSet.has(skill.toLowerCase().trim());
+                return (
+                    <span
+                        key={i}
+                        className={`skill-pill ${isMatched ? 'skill-pill-matched' : ''}`}
+                        title={isMatched ? 'Matched with job keywords' : ''}
+                    >
+                        {isMatched && <span className="skill-matched-dot" />}
+                        {skill}
+                    </span>
+                );
+            })}
             {!expanded && remaining > 0 && (
-                <span className="skill-pill" style={{ cursor: 'pointer', opacity: 0.6 }}
+                <span className="skill-pill skill-pill-more"
                     onClick={() => setExpanded(true)}>
                     +{remaining} more
                 </span>
             )}
             {expanded && (
-                <span className="skill-pill" style={{ cursor: 'pointer', opacity: 0.6 }}
+                <span className="skill-pill skill-pill-more"
                     onClick={() => setExpanded(false)}>
                     show less
                 </span>
@@ -70,11 +83,11 @@ function CandidateDetail({ candidate }) {
     const vecScore   = candidate.vector_similarity_score ?? null;
     const tfidfScore = candidate.tfidf_score             ?? null;
 
-    // detect stale data (old scorer results that don't have breakdown fields)
     const hasBreakdown = tabScore !== null && vecScore !== null && tfidfScore !== null;
     const allZero = hasBreakdown && tabScore === 0 && vecScore === 0 && tfidfScore === 0;
 
-    const skills = candidate.skills || candidate.matched_skills || [];
+    const skills        = candidate.skills || [];
+    const matchedSkills = candidate.jd_matched_skills || [];
 
     return (
         <div className="candidate-detail-card">
@@ -85,26 +98,26 @@ function CandidateDetail({ candidate }) {
                     <span className="detail-label">Email</span>
                     <span className="detail-value">
                         {candidate.email
-                            ? <a href={`mailto:${candidate.email}`} style={{ color: '#7bb4fd', textDecoration: 'none' }}>{candidate.email}</a>
-                            : <span style={{ color: '#3a3a50' }}>—</span>}
+                            ? <a href={`mailto:${candidate.email}`} className="detail-link">{candidate.email}</a>
+                            : <span className="detail-empty">—</span>}
                     </span>
                 </div>
                 <div className="detail-cell">
                     <span className="detail-label">Phone</span>
-                    <span className="detail-value">{candidate.phone || <span style={{ color: '#3a3a50' }}>—</span>}</span>
+                    <span className="detail-value">{candidate.phone || <span className="detail-empty">—</span>}</span>
                 </div>
                 <div className="detail-cell">
                     <span className="detail-label">Experience</span>
                     <span className="detail-value">
                         {candidate.experience_years > 0
                             ? `${candidate.experience_years} yr${candidate.experience_years !== 1 ? 's' : ''}`
-                            : <span style={{ color: '#3a3a50' }}>—</span>}
+                            : <span className="detail-empty">—</span>}
                     </span>
                 </div>
                 <div className="detail-cell">
                     <span className="detail-label">Education</span>
                     <span className="detail-value">
-                        {candidate.education || <span style={{ color: '#3a3a50' }}>—</span>}
+                        {candidate.education || <span className="detail-empty">—</span>}
                     </span>
                 </div>
                 <div className="detail-cell">
@@ -112,21 +125,29 @@ function CandidateDetail({ candidate }) {
                     <span className="detail-value">
                         {candidate.department && candidate.department !== 'Unknown'
                             ? candidate.department
-                            : <span style={{ color: '#3a3a50' }}>—</span>}
+                            : <span className="detail-empty">—</span>}
                     </span>
                 </div>
                 <div className="detail-cell">
                     <span className="detail-label">Job Role</span>
                     <span className="detail-value">
-                        {candidate.job_role || <span style={{ color: '#3a3a50' }}>—</span>}
+                        {candidate.job_role || <span className="detail-empty">—</span>}
                     </span>
                 </div>
             </div>
 
-            {/* ── Skills ── */}
+            {/* ── Skills with matched highlighting ── */}
             <div className="detail-skills-row">
-                <span className="detail-label">Skills</span>
-                <SkillPills skills={skills} limit={10} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span className="detail-label">Skills</span>
+                    {matchedSkills.length > 0 && (
+                        <span className="matched-legend">
+                            <span className="skill-matched-dot" />
+                            Matched with Job Description
+                        </span>
+                    )}
+                </div>
+                <SkillPills skills={skills} matchedSkills={matchedSkills} limit={12} />
             </div>
 
             {/* ── Score Breakdown ── */}
@@ -140,7 +161,7 @@ function CandidateDetail({ candidate }) {
                         <span>TabTransformer</span>
                         <span className="score-breakdown-max">/ 40</span>
                     </div>
-                    <BreakdownBar value={hasBreakdown ? tabScore : 0} max={40} color="#e5e5e5" />
+                    <BreakdownBar value={hasBreakdown ? tabScore : 0} max={40} color="#22c55e" />
                 </div>
 
                 <div className="score-breakdown-row">
@@ -148,7 +169,7 @@ function CandidateDetail({ candidate }) {
                         <span>Vector Similarity</span>
                         <span className="score-breakdown-max">/ 35</span>
                     </div>
-                    <BreakdownBar value={hasBreakdown ? vecScore : 0} max={35} color="#a3a3a3" />
+                    <BreakdownBar value={hasBreakdown ? vecScore : 0} max={35} color="#f59e0b" />
                 </div>
 
                 <div className="score-breakdown-row">
@@ -156,16 +177,15 @@ function CandidateDetail({ candidate }) {
                         <span>TF-IDF Match</span>
                         <span className="score-breakdown-max">/ 25</span>
                     </div>
-                    <BreakdownBar value={hasBreakdown ? tfidfScore : 0} max={25} color="#525252" />
+                    <BreakdownBar value={hasBreakdown ? tfidfScore : 0} max={25} color="#6366f1" />
                 </div>
 
                 <div className="score-breakdown-total">
                     <span>Total score</span>
-                    <strong>{candidate.score}%</strong>
+                    <strong>{candidate.score} <span style={{ fontSize: '0.75em', fontWeight: 400, opacity: 0.6 }}>/ 100</span></strong>
                 </div>
 
-                {/* stale data notice */}
-                {(allZero || !hasBreakdown) && (
+                {allZero && candidate.score > 0 && (
                     <div className="score-stale-notice">
                         <span>⚠</span>
                         <span>Score breakdown not available for older results. Re-upload resumes to see the full AI breakdown.</span>
@@ -194,7 +214,7 @@ function exportToCSV(candidates) {
         'Rank', 'Name', 'Email', 'Phone', 'Score',
         'TabTransformer', 'Vector Sim', 'TF-IDF',
         'Experience (Yrs)', 'Education', 'Department', 'Job Role',
-        'Shortlisted', 'Anomaly', 'Skills', 'Filename'
+        'Anomaly', 'Matched Skills', 'All Skills', 'Filename'
     ];
 
     const rows = candidates.map(c => [
@@ -210,9 +230,9 @@ function exportToCSV(candidates) {
         `"${(c.education   || '').replace(/"/g, '""')}"`,
         c.department  || '',
         `"${(c.job_role    || '').replace(/"/g, '""')}"`,
-        c.shortlisted ? 'Yes' : 'No',
         c.is_anomaly  ? 'Flagged' : 'Clean',
-        `"${(c.skills || c.matched_skills || []).join(', ')}"`,
+        `"${(c.jd_matched_skills || []).join(', ')}"`,
+        `"${(c.skills || []).join(', ')}"`,
         `"${(c.filename || '').replace(/"/g, '""')}"`,
     ]);
 
@@ -241,7 +261,7 @@ function CandidateTable({ candidates }) {
             <div className="results-section-header">
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                     <h3 className="results-section-title">Candidate Rankings</h3>
-                    <span style={{ color: '#505065', fontSize: '0.88rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
                         {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
                     </span>
                 </div>
@@ -253,7 +273,7 @@ function CandidateTable({ candidates }) {
             {/* Anomaly banner */}
             {flaggedCount > 0 && (
                 <div className="anomaly-banner">
-                    ⚠ <strong>{flaggedCount}</strong> of {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} flagged — review carefully before shortlisting.
+                    ⚠ <strong>{flaggedCount}</strong> of {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} flagged — review carefully.
                 </div>
             )}
 
@@ -303,17 +323,10 @@ function CandidateTable({ candidates }) {
                                             style={{ width: `${Math.min(c.score, 100)}%` }}
                                         />
                                     </div>
-                                    <span className={`score-label ${cls}`}>{c.score}%</span>
+                                    <span className={`score-label ${cls}`}>{c.score}</span>
                                 </div>
 
-                                {/* Shortlisted */}
-                                <div className="col-status">
-                                    {c.shortlisted
-                                        ? <span className="badge badge-green">✓ Shortlisted</span>
-                                        : <span className="badge badge-dim">Not shortlisted</span>}
-                                </div>
-
-                                {/* Anomaly */}
+                                {/* Anomaly status */}
                                 <div className="col-anomaly">
                                     {c.is_anomaly
                                         ? <span className="badge badge-red">⚠ Flagged</span>

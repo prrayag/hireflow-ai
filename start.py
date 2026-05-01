@@ -36,11 +36,19 @@ class Colors:
 processes = []
 
 def print_banner():
-    print(f"""
+    try:
+        print(f"""
 {Colors.BOLD}{Colors.GREEN}╔══════════════════════════════════════════╗
 ║          🚀  HireFlow AI  🚀            ║
 ║      AI-Powered Resume Screening        ║
 ╚══════════════════════════════════════════╝{Colors.RESET}
+""")
+    except UnicodeEncodeError:
+        print(f"""
+{Colors.BOLD}{Colors.GREEN}===========================================
+          HireFlow AI
+      AI-Powered Resume Screening
+==========================================={Colors.RESET}
 """)
 
 def start_backend():
@@ -122,11 +130,11 @@ def cleanup(*args):
         try:
             proc.terminate()
             proc.wait(timeout=5)
-            print(f"  ✓ {name} stopped")
+            print(f"  [OK] {name} stopped")
         except Exception:
             try:
                 proc.kill()
-                print(f"  ✗ {name} force-killed")
+                print(f"  [KILL] {name} force-killed")
             except Exception:
                 pass
     print(f"{Colors.GREEN}[Done]{Colors.RESET} All services stopped. Goodbye!")
@@ -161,12 +169,12 @@ def main():
     # Give processes a moment to start
     time.sleep(2)
     
-    print(f"\n{Colors.BOLD}{Colors.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.RESET}")
+    print(f"\n{Colors.BOLD}{Colors.GREEN}------------------------------------------{Colors.RESET}")
     if run_backend:
-        print(f"  {Colors.CYAN}Backend  →{Colors.RESET}  http://localhost:5001")
+        print(f"  {Colors.CYAN}Backend  ->{Colors.RESET}  http://localhost:5001")
     if run_frontend:
-        print(f"  {Colors.YELLOW}Frontend →{Colors.RESET}  http://localhost:5173")
-    print(f"{Colors.BOLD}{Colors.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.RESET}")
+        print(f"  {Colors.YELLOW}Frontend ->{Colors.RESET}  http://localhost:5173")
+    print(f"{Colors.BOLD}{Colors.GREEN}------------------------------------------{Colors.RESET}")
     print(f"\n  Press {Colors.BOLD}Ctrl+C{Colors.RESET} to stop all services\n")
     
     # Stream output from both processes interleaved
