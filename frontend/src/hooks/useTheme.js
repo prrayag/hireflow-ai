@@ -1,25 +1,21 @@
-// useTheme.js — global dark/light mode hook
-// Default: dark. Persists to localStorage.
-
+// useTheme.js — forced light mode (dark mode removed)
 import { useState, useEffect, createContext, useContext } from 'react';
 
-export const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} });
+export const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {} });
 
 export function useTheme() {
     return useContext(ThemeContext);
 }
 
 export function useThemeProvider() {
-    const [theme, setTheme] = useState(() => {
-        return localStorage.getItem('hf-theme') || 'dark';
-    });
+    const [theme] = useState('light');
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('hf-theme', theme);
-    }, [theme]);
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('hf-theme', 'light');
+    }, []);
 
-    const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
+    const toggleTheme = () => {}; // No-op, light mode only
 
     return { theme, toggleTheme };
 }

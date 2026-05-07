@@ -1,12 +1,9 @@
-// Navbar.jsx — HireFlow AI global navbar with dark/light toggle
+// Navbar.jsx — HireFlow AI clean navbar (light mode, no toggle)
 import { Link, useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
 import '../styles/landing.css';
 
 function Navbar() {
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
-    const isDark = theme === 'dark';
 
     return (
         <nav className="navbar">
@@ -30,47 +27,8 @@ function Navbar() {
                 hireflow
             </Link>
 
-            <div className="navbar-links">
-                <Link to="/dashboard" className="navbar-link">Dashboard</Link>
-                <Link to="/analytics" className="navbar-link navbar-link-accent">Analytics ✦</Link>
-            </div>
-
             <div className="navbar-buttons">
-                {/* ── Theme toggle ── */}
-                <button
-                    className="theme-toggle"
-                    onClick={toggleTheme}
-                    aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                    title={isDark ? 'Light mode' : 'Dark mode'}
-                >
-                    <span className="theme-toggle-track">
-                        <span className="theme-toggle-thumb">
-                            {/* Sun icon (light) */}
-                            {!isDark && (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                    <circle cx="12" cy="12" r="4"/>
-                                    <line x1="12" y1="2"  x2="12" y2="5"/>
-                                    <line x1="12" y1="19" x2="12" y2="22"/>
-                                    <line x1="2"  y1="12" x2="5"  y2="12"/>
-                                    <line x1="19" y1="12" x2="22" y2="12"/>
-                                    <line x1="4.22" y1="4.22"  x2="6.34" y2="6.34"/>
-                                    <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-                                    <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/>
-                                    <line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
-                                </svg>
-                            )}
-                            {/* Moon icon (dark) */}
-                            {isDark && (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                                </svg>
-                            )}
-                        </span>
-                    </span>
-                </button>
-
-
-                <button className="btn-nav-primary" onClick={() => navigate('/upload')}>
+                <button className="btn-nav-primary" onClick={() => navigate('/dashboard')}>
                     Get started
                 </button>
             </div>

@@ -3,9 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AnimatedBackground from './components/AnimatedBackground';
 import LandingPage from './pages/LandingPage';
-import UploadPage from './pages/UploadPage';
-import Dashboard from './pages/Dashboard';
-import AnalyticsPage from './pages/AnalyticsPage';
+import DashboardPage from './pages/DashboardPage';
 import { ThemeContext, useThemeProvider } from './hooks/useTheme';
 
 function App() {
@@ -19,9 +17,7 @@ function App() {
                 <AnimatedBackground />
                 <Routes>
                     <Route path="/"          element={<LandingPage />} />
-                    <Route path="/upload"    element={<UploadPage />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/analytics" element={<AnalyticsPage />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
                 </Routes>
             </Router>
         </ThemeContext.Provider>

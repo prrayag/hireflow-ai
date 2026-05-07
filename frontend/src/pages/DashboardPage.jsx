@@ -1,0 +1,410 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
+import '../styles/landing.css'; 
+
+function DashboardPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    
+    // Parse tab from URL, default to 'rankings'
+    const queryParams = new URLSearchParams(location.search);
+    const activeTab = queryParams.get('tab') || 'rankings';
+
+    const [jdText, setJdText] = useState('');
+    const [rankings, setRankings] = useState([]);
+    const [analyticsData, setAnalyticsData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [files, setFiles] = useState(null);
+    const [expandedRow, setExpandedRow] = useState(null);
+    const [timing, setTiming] = useState(null);
+
+    const handleUpload = async () => {
+        if (!jdText.trim()) {
+            setError("Please enter a Job Description.");
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        setTiming(null);
+        
+        try {
+            const formData = new FormData();
+            formData.append('jd_text', jdText);
+            if (files && files.length > 0) {
+                Array.from(files).forEach(file => {
+                    formData.append('resumes', file);
+                });
+            }
+
+            const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            setRankings(response.data.rankings);
+            if (response.data.timing) {
+                setTiming(response.data.timing);
+            }
+            fetchAnalytics();
+        } catch (err) {
+            console.error("Upload error:", err);
+            setError(err.response?.data?.error || "Failed to process search. Make sure the backend and MongoDB are running.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAnalytics = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/analytics`);
+            setAnalyticsData(response.data);
+        } catch (err) {
+            console.error("Analytics error:", err);
+        }
+    };
+
+    const handleExportCSV = () => {
+        // Build CSV entirely client-side — no backend call needed
+        const headers = ['Rank', 'Candidate Name', 'AI Match Score (%)', 'Email', 'Phone', 'Education', 'Years of Experience', 'Skills'];
+        const rows = rankings.map((c, i) => [
+            i + 1,
+            c.name || 'Unknown',
+            c.ai_score || 'N/A',
+            c.email || 'Not Found',
+            c.phone || 'Not Found',
+            c.education || 'Not Found',
+            c.experience || 'N/A',
+            (c.skills || []).join(', ')
+        ]);
+        
+        // Escape fields that might contain commas
+        const escape = (val) => {
+            const str = String(val);
+            return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+        };
+        
+        const csvContent = [
+            headers.map(escape).join(','),
+            ...rows.map(row => row.map(escape).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'HireFlow_Rankings.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    useEffect(() => {
+        if (activeTab === 'analytics' && !analyticsData) {
+            fetchAnalytics();
+        }
+    }, [activeTab]);
+
+    return (
+        <div className="lp-root" style={{ paddingTop: '100px', minHeight: '100vh', paddingBottom: '100px' }}>
+            <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 20px' }}>
+                
+                {/* Header Section */}
+                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <p className="lp-eyebrow" style={{ justifyContent: 'center' }}>{activeTab === 'rankings' ? 'AI Matching Engine' : 'Data Insights'}</p>
+                    <h1 className="lp-headline" style={{ fontSize: '3rem', margin: '10px auto' }}>
+                        {activeTab === 'rankings' ? 'Candidate Rankings' : 'Big Data Analytics'}
+                    </h1>
+                    <p className="lp-subline" style={{ margin: '0 auto' }}>
+                        {activeTab === 'rankings' 
+                            ? 'Upload batches of resumes and a Job Description. Our Spark pipeline will chunk, embed, and rank candidates instantly.' 
+                            : 'Visualize skill distributions and AI score correlations generated by your recent batch processing.'}
+                    </p>
+                </div>
+
+                {/* Tab 1: Candidate Rankings */}
+                {activeTab === 'rankings' && (
+                    <div style={{ animation: 'fadeIn 0.6s ease-out' }}>
+                        
+                        {/* Input Card */}
+                        <div className="ui-mockup" style={{ padding: '40px', marginBottom: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                            
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '12px' }}>Job Description</h3>
+                            <textarea 
+                                value={jdText}
+                                onChange={(e) => setJdText(e.target.value)}
+                                placeholder="Paste the ideal candidate description here... (e.g., Senior Python Engineer with experience in Spark and AWS)"
+                                style={{ width: '100%', height: '120px', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '30px', fontFamily: 'inherit', fontSize: '1rem', resize: 'none', background: 'var(--input-bg, #fcfcfc)', outline: 'none', transition: 'border-color 0.2s', textAlign: 'center' }}
+                            />
+                            
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '12px' }}>Upload Resumes (Batch)</h3>
+                            <div style={{ position: 'relative', marginBottom: '30px', padding: '40px 20px', border: '2px dashed var(--border)', borderRadius: '16px', textAlign: 'center', background: 'var(--input-bg, #fcfcfc)', transition: 'border-color 0.2s', cursor: 'pointer' }}>
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    accept=".pdf,.docx,.txt,.zip,.jpg,.jpeg,.png"
+                                    onChange={(e) => setFiles(e.target.files)}
+                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                                />
+                                <div style={{ pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <p style={{ color: 'var(--ink)', fontSize: '1.1rem', fontWeight: '500', marginBottom: '4px' }}>
+                                        Drop your ZIP, PDF, or Image files here
+                                    </p>
+                                    <p style={{ color: 'var(--ink)', opacity: 0.6, fontSize: '0.9rem' }}>
+                                        Upload a ZIP archive or Images to process 1000+ multimodal resumes instantly with PySpark.
+                                    </p>
+                                    {files && files.length > 0 && (
+                                        <div style={{ marginTop: '20px', display: 'inline-block', padding: '8px 16px', background: 'rgba(59, 126, 248, 0.1)', color: '#3b7ef8', borderRadius: '30px', fontWeight: '600', fontSize: '0.9rem' }}>
+                                            {files.length} file(s) selected
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                                <button 
+                                    className="lp-btn-primary" 
+                                    onClick={handleUpload}
+                                    disabled={loading}
+                                    style={{ padding: '16px 32px', fontSize: '1.1rem', opacity: loading ? 0.7 : 1, cursor: loading ? 'wait' : 'pointer' }}
+                                >
+                                    {loading ? 'Processing Search...' : (files && files.length > 0 ? 'Run Vector Search & Rank Batch' : 'Search Historical Data (No Files)')}
+                                </button>
+                                {error && <span style={{ color: '#ef4444', fontWeight: '500' }}>{error}</span>}
+                            </div>
+                        </div>
+
+                        {/* Processing Time Banner */}
+                        {timing && (
+                            <div style={{
+                                display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '20px',
+                                padding: '20px 30px', marginBottom: '30px',
+                                background: 'linear-gradient(135deg, rgba(59,126,248,0.06), rgba(139,92,246,0.06))',
+                                border: '1px solid rgba(59,126,248,0.12)',
+                                borderRadius: '16px',
+                                animation: 'fadeIn 0.6s ease-out'
+                            }}>
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#3b7ef8' }}>{timing.resume_count}</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Resumes</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#8b5cf6' }}>{timing.chunk_count}</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Chunks</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#3b7ef8' }}>{timing.spark_processing}s</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Spark Time</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#10b981' }}>{timing.total}s</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Rankings Results */}
+                        {rankings.length > 0 && (
+                            <div className="ui-mockup" style={{ padding: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', animation: 'fadeIn 0.6s ease-out' }}>
+                                
+                                {/* Top bar with title + action buttons */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', margin: 0 }}>Top Candidates</h2>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        {/* Export CSV Button */}
+                                        <button 
+                                            onClick={handleExportCSV}
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                                padding: '10px 20px', borderRadius: '10px',
+                                                background: '#fff', border: '1px solid var(--border)',
+                                                color: 'var(--ink)', fontWeight: '600', fontSize: '0.88rem',
+                                                cursor: 'pointer', transition: 'all 0.2s',
+                                                fontFamily: 'inherit'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b7ef8'; e.currentTarget.style.color = '#3b7ef8'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--ink)'; }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                <polyline points="7 10 12 15 17 10"/>
+                                                <line x1="12" y1="15" x2="12" y2="3"/>
+                                            </svg>
+                                            Export CSV
+                                        </button>
+                                        {/* Spark UI Button */}
+                                        <a 
+                                            href="http://localhost:4040"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                                padding: '10px 20px', borderRadius: '10px',
+                                                background: 'rgba(59,126,248,0.08)', border: '1px solid rgba(59,126,248,0.2)',
+                                                color: '#3b7ef8', fontWeight: '600', fontSize: '0.88rem',
+                                                cursor: 'pointer', transition: 'all 0.2s',
+                                                textDecoration: 'none', fontFamily: 'inherit'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,126,248,0.15)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,126,248,0.08)'; }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                            </svg>
+                                            Spark UI
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Candidate Name</th>
+                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>JobBERT Match</th>
+                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Experience</th>
+                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Top Skills</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rankings.map((candidate, idx) => (
+                                                <React.Fragment key={idx}>
+                                                    <tr 
+                                                        onClick={() => setExpandedRow(expandedRow === idx ? null : idx)}
+                                                        style={{ 
+                                                            borderBottom: expandedRow === idx ? 'none' : '1px solid var(--border)', 
+                                                            transition: 'background 0.2s',
+                                                            cursor: 'pointer',
+                                                            background: expandedRow === idx ? 'rgba(59, 126, 248, 0.03)' : 'transparent'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            if (expandedRow !== idx) e.currentTarget.style.background = 'var(--bg-elevated)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            if (expandedRow !== idx) e.currentTarget.style.background = 'transparent';
+                                                        }}
+                                                    >
+                                                        <td style={{ padding: '20px 16px', fontWeight: '600', color: 'var(--ink)' }}>{candidate.name}</td>
+                                                        <td style={{ padding: '20px 16px' }}>
+                                                            <span style={{ 
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                background: 'rgba(59, 126, 248, 0.1)', 
+                                                                color: '#3b7ef8', 
+                                                                padding: '6px 14px', 
+                                                                borderRadius: '30px',
+                                                                fontWeight: '700',
+                                                                fontSize: '0.95rem'
+                                                            }}>
+                                                                {candidate.ai_score}%
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '20px 16px', color: 'var(--ink)', opacity: 0.8 }}>{candidate.experience} Years</td>
+                                                        <td style={{ padding: '20px 16px' }}>
+                                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                                                {candidate.skills.slice(0, 3).map((skill, sIdx) => (
+                                                                    <span key={sIdx} style={{ background: 'var(--input-bg, #fcfcfc)', border: '1px solid var(--border)', color: 'var(--ink)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '500' }}>
+                                                                        {skill}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {expandedRow === idx && (
+                                                        <tr style={{ background: 'rgba(59, 126, 248, 0.03)', borderBottom: '1px solid var(--border)' }}>
+                                                            <td colSpan="4" style={{ padding: '0 20px 20px' }}>
+                                                                <div style={{ background: 'var(--card-bg, #fff)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', display: 'flex', flexWrap: 'wrap', gap: '30px', textAlign: 'left', animation: 'fadeIn 0.3s ease-out' }}>
+                                                                    <div style={{ flex: '1 1 200px' }}>
+                                                                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Contact Info</span>
+                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Email:</strong> {candidate.email}</p>
+                                                                        <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Phone:</strong> {candidate.phone}</p>
+                                                                    </div>
+                                                                    <div style={{ flex: '1 1 200px' }}>
+                                                                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Background</span>
+                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Education:</strong> {candidate.education}</p>
+                                                                        <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Tab 2: Big Data Analytics */}
+                {activeTab === 'analytics' && (
+                    <div style={{ animation: 'fadeIn 0.6s ease-out' }}>
+                        {/* Charts Section */}
+                        <div className="ui-mockup" style={{ padding: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '15px' }}>Pipeline Analytics</h2>
+                                <button className="lp-btn-ghost" onClick={fetchAnalytics}>Refresh Data</button>
+                            </div>
+                            
+                            {!analyticsData ? (
+                                <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink)', opacity: 0.6 }}>
+                                    <p style={{ fontSize: '1.1rem' }}>Loading distributed metrics from MongoDB...</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '40px' }}>
+                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Skill Distribution (Histogram)</h3>
+                                        <img 
+                                            src={analyticsData.skill_chart} 
+                                            alt="Skill Distribution Chart" 
+                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
+                                        />
+                                    </div>
+                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Recruitment Funnel</h3>
+                                        <img 
+                                            src={analyticsData.funnel_chart} 
+                                            alt="Funnel Chart" 
+                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
+                                        />
+                                    </div>
+                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Experience vs Score Density (Heatmap)</h3>
+                                        <img 
+                                            src={analyticsData.heatmap_chart} 
+                                            alt="Heatmap Chart" 
+                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
+                                        />
+                                    </div>
+                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Average Match Score (Gauge)</h3>
+                                        <img 
+                                            src={analyticsData.gauge_chart} 
+                                            alt="Gauge Chart" 
+                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default DashboardPage;
