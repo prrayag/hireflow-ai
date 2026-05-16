@@ -109,7 +109,7 @@ function DashboardPage() {
 
     return (
         <div className="lp-root" style={{ paddingTop: '100px', minHeight: '100vh', paddingBottom: '100px' }}>
-            <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 20px' }}>
+            <div className="container" style={{ maxWidth: activeTab === 'analytics' ? '1200px' : '1000px', margin: '0 auto', padding: '0 20px', transition: 'max-width 0.3s' }}>
                 
                 {/* Header Section */}
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -352,54 +352,91 @@ function DashboardPage() {
                 {/* Tab 2: Big Data Analytics */}
                 {activeTab === 'analytics' && (
                     <div style={{ animation: 'fadeIn 0.6s ease-out' }}>
-                        {/* Charts Section */}
-                        <div className="ui-mockup" style={{ padding: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
-                                <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '15px' }}>Pipeline Analytics</h2>
-                                <button className="lp-btn-ghost" onClick={fetchAnalytics}>Refresh Data</button>
+
+                        {/* Summary Stats Banner */}
+                        {analyticsData?.summary && (
+                            <div style={{
+                                display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '20px',
+                                padding: '20px 30px', marginBottom: '30px',
+                                background: 'linear-gradient(135deg, rgba(59,126,248,0.06), rgba(139,92,246,0.06))',
+                                border: '1px solid rgba(59,126,248,0.12)',
+                                borderRadius: '16px'
+                            }}>
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#3b7ef8' }}>{analyticsData.summary.total_candidates}</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Candidates</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#8b5cf6' }}>{analyticsData.summary.avg_score}%</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Score</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#10b981' }}>{analyticsData.summary.above_50_pct}</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Above 50%</div>
+                                </div>
+                                <div style={{ width: '1px', background: 'rgba(59,126,248,0.15)', alignSelf: 'stretch' }} />
+                                <div style={{ textAlign: 'center', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#f97316' }}>{analyticsData.summary.top_skills?.length || 0}</div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unique Skills</div>
+                                </div>
                             </div>
-                            
-                            {!analyticsData ? (
-                                <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink)', opacity: 0.6 }}>
-                                    <p style={{ fontSize: '1.1rem' }}>Loading distributed metrics from MongoDB...</p>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '40px' }}>
-                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Skill Distribution (Histogram)</h3>
-                                        <img 
-                                            src={analyticsData.skill_chart} 
-                                            alt="Skill Distribution Chart" 
-                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
-                                        />
-                                    </div>
-                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Recruitment Funnel</h3>
-                                        <img 
-                                            src={analyticsData.funnel_chart} 
-                                            alt="Funnel Chart" 
-                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
-                                        />
-                                    </div>
-                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Experience vs Score Density (Heatmap)</h3>
-                                        <img 
-                                            src={analyticsData.heatmap_chart} 
-                                            alt="Heatmap Chart" 
-                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
-                                        />
-                                    </div>
-                                    <div style={{ background: 'var(--input-bg, #fcfcfc)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                                        <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', color: 'var(--ink)', fontWeight: '600' }}>Average Match Score (Gauge)</h3>
-                                        <img 
-                                            src={analyticsData.gauge_chart} 
-                                            alt="Gauge Chart" 
-                                            style={{ width: '100%', borderRadius: '12px', display: 'block', margin: '0 auto' }} 
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                        )}
+
+                        {/* Refresh Button */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                            <button className="lp-btn-ghost" onClick={fetchAnalytics} style={{ fontSize: '0.88rem' }}>Refresh Data</button>
                         </div>
+                        
+                        {!analyticsData ? (
+                            <div className="ui-mockup" style={{ padding: '80px 40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                                <p style={{ fontSize: '1.1rem', color: 'var(--ink)', opacity: 0.6 }}>Loading distributed metrics from MongoDB...</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                                {/* Chart 1: Score Distribution */}
+                                <div style={{ background: 'var(--card-bg, #fff)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Score Distribution</h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: '16px' }}>How many candidates fall in each 10-point score band</p>
+                                    <img 
+                                        src={analyticsData.skill_chart} 
+                                        alt="Score Distribution" 
+                                        style={{ width: '100%', borderRadius: '12px', display: 'block' }} 
+                                    />
+                                </div>
+                                {/* Chart 2: Hiring Pipeline Funnel */}
+                                <div style={{ background: 'var(--card-bg, #fff)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Hiring Pipeline Funnel</h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: '16px' }}>Candidate drop-off at each stage of the pipeline</p>
+                                    <img 
+                                        src={analyticsData.funnel_chart} 
+                                        alt="Hiring Pipeline Funnel" 
+                                        style={{ width: '100%', borderRadius: '12px', display: 'block' }} 
+                                    />
+                                </div>
+                                {/* Chart 3: Skill x Avg Score */}
+                                <div style={{ background: 'var(--card-bg, #fff)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Skill x Avg Score</h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: '16px' }}>Which skills correlate with higher-scoring candidates</p>
+                                    <img 
+                                        src={analyticsData.heatmap_chart} 
+                                        alt="Skill x Avg Score" 
+                                        style={{ width: '100%', borderRadius: '12px', display: 'block' }} 
+                                    />
+                                </div>
+                                {/* Chart 4: Score Components Breakdown */}
+                                <div style={{ background: 'var(--card-bg, #fff)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--ink)', marginBottom: '4px' }}>Score Components Breakdown</h3>
+                                    <p style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: '16px' }}>Average achieved vs maximum for each scoring component</p>
+                                    <img 
+                                        src={analyticsData.gauge_chart} 
+                                        alt="Score Components Breakdown" 
+                                        style={{ width: '100%', borderRadius: '12px', display: 'block' }} 
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
