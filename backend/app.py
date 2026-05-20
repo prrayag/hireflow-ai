@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 import base64
-import random
+
 import fitz # PyMuPDF
 import uuid
 import zipfile

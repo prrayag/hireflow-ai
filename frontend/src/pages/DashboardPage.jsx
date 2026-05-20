@@ -4,6 +4,37 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import '../styles/landing.css'; 
 
+const LoadingSpinner = () => {
+    const [msgIndex, setMsgIndex] = useState(0);
+    const messages = [
+        "Booting Apache Spark Cluster...",
+        "Running Multimodal OCR Extraction...",
+        "Loading JobBERT Deep Learning Model...",
+        "Converting Text to 384-D Vectors...",
+        "Executing Cosine Similarity Search..."
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setMsgIndex((prev) => (prev + 1) % messages.length);
+        }, 2500);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin-anim">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <span style={{ fontWeight: '600' }}>{messages[msgIndex]}</span>
+            <style>{`
+                @keyframes spin { 100% { transform: rotate(360deg); } }
+                .spin-anim { animation: spin 1s linear infinite; }
+            `}</style>
+        </div>
+    );
+};
+
 function DashboardPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -173,9 +204,11 @@ function DashboardPage() {
                                     className="lp-btn-primary" 
                                     onClick={handleUpload}
                                     disabled={loading}
-                                    style={{ padding: '16px 32px', fontSize: '1.1rem', opacity: loading ? 0.7 : 1, cursor: loading ? 'wait' : 'pointer' }}
+                                    style={{ padding: '16px 32px', fontSize: '1.1rem', opacity: loading ? 0.7 : 1, cursor: loading ? 'wait' : 'pointer', minWidth: '300px' }}
                                 >
-                                    {loading ? 'Processing Search...' : (files && files.length > 0 ? 'Run Vector Search & Rank Batch' : 'Search Historical Data (No Files)')}
+                                    {loading ? (
+                                        <LoadingSpinner />
+                                    ) : (files && files.length > 0 ? 'Run Vector Search & Rank Batch' : 'Search Historical Data (No Files)')}
                                 </button>
                                 {error && <span style={{ color: '#ef4444', fontWeight: '500' }}>{error}</span>}
                             </div>
