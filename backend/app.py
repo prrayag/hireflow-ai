@@ -1,5 +1,8 @@
 import os
+import sys
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+os.environ["PYSPARK_PYTHON"] = sys.executable
+os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -97,11 +100,17 @@ def api_upload():
         if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower:
             edu = "Master's Degree"
             
+        # Experience extraction (heuristic)
+        exp_match = re.search(r'(\d+)(?:\+| years?| yrs?| \+ years?)(?: of)? experience', text_lower)
+        exp = int(exp_match.group(1)) if exp_match and exp_match.group(1).isdigit() else 0
+        if exp > 40: exp = 0 # sanity check
+        
         return {
             "email": email,
             "phone": phone,
             "skills": found_skills[:5] if found_skills else ["N/A"],
-            "education": edu
+            "education": edu,
+            "experience": exp
         }
 
     for file in uploaded_files:
@@ -126,7 +135,7 @@ def api_upload():
                                     "phone": meta["phone"],
                                     "education": meta["education"],
                                     "skills": meta["skills"], 
-                                    "experience": random.randint(1, 10) 
+                                    "experience": meta["experience"] 
                                 })
             except Exception as e:
                 print(f"Error reading ZIP {filename}: {e}")
@@ -143,7 +152,7 @@ def api_upload():
                     "phone": meta["phone"],
                     "education": meta["education"],
                     "skills": meta["skills"], 
-                    "experience": random.randint(1, 10) 
+                    "experience": meta["experience"] 
                 })
 
     if not resumes:
@@ -535,5 +544,5 @@ def api_export():
 if __name__ == '__main__':
     # Initialize Spark eagerly so the Spark UI is available at http://localhost:4040
     get_spark()
-    print("[HireFlow] Backend ready. Flask on :5000, Spark UI on :4040")
-    app.run(debug=True, port=5000, use_reloader=False)
+    print("[HireFlow] Backend ready. Flask on :5001, Spark UI on :4040")
+    app.run(debug=True, port=5001, use_reloader=False)
