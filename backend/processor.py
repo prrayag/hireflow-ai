@@ -193,16 +193,16 @@ def search_best_candidates(jd_text, top_k=5):
         matches = sorted(matches, key=lambda x: x["score"], reverse=True)
     
     # Post-process: Get the top unique candidates
-    seen = set()
+    seen_names = set()
     unique_candidates = []
     for match in matches:
-        rid = match['resume_id']
-        if rid not in seen:
-            seen.add(rid)
+        candidate_name = match['metadata'].get('name', 'Unknown')
+        if candidate_name not in seen_names:
+            seen_names.add(candidate_name)
             # Convert similarity score to a readable percentage format
             ai_score = round(match['score'] * 100, 2)
             unique_candidates.append({
-                "resume_id": rid,
+                "resume_id": match['resume_id'],
                 "name": match['metadata'].get('name', 'Unknown'),
                 "ai_score": ai_score,
                 "experience": match['metadata'].get('experience', 0),

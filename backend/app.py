@@ -100,9 +100,20 @@ def api_upload():
         if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower:
             edu = "Master's Degree"
             
-        # Experience extraction (heuristic)
-        exp_match = re.search(r'(\d+)(?:\+| years?| yrs?| \+ years?)(?: of)? experience', text_lower)
-        exp = int(exp_match.group(1)) if exp_match and exp_match.group(1).isdigit() else 0
+        # Experience extraction (advanced heuristic using regex and date ranges)
+        exp = 0
+        exp_match = re.search(r'(\d+)\+?\s*(?:years?|yrs?).*?(?:experience|exp\b)', text_lower)
+        if exp_match:
+            exp = int(exp_match.group(1))
+        else:
+            # Fallback: sum up date ranges (e.g., 2018 - 2022)
+            date_ranges = re.findall(r'(20\d{2})\s*(?:-|to|–)\s*(20\d{2}|present|now|current)', text_lower)
+            for start, end in date_ranges:
+                start_yr = int(start)
+                end_yr = 2024 if end in ['present', 'now', 'current'] else int(end)
+                if end_yr >= start_yr:
+                    exp += (end_yr - start_yr)
+        
         if exp > 40: exp = 0 # sanity check
         
         return {
