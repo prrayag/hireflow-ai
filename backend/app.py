@@ -159,13 +159,16 @@ def api_upload():
     rankings = search_best_candidates(jd_text, top_k=10)
     search_time = round(time.time() - t_search, 2)
     
-    # Mock fallback for demo without fully working mongo Atlas vector search setup
+    # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
-        rankings = []
         for r in resumes:
+            skill_score = min(40, len([s for s in r.get('skills', []) if s != 'N/A']) * 8)
+            exp_score = min(30, r.get('experience', 0) * 3)
+            edu_bonus = 20 if 'Master' in str(r.get('education', '')) else (15 if 'Bachelor' in str(r.get('education', '')) else 5)
+            det_score = max(10, min(100, skill_score + exp_score + edu_bonus))
             rankings.append({
                 "name": r.get('name', 'Unknown'),
-                "ai_score": round(random.uniform(70, 99), 2),
+                "ai_score": round(det_score, 2),
                 "experience": r.get('experience', 0),
                 "skills": r.get('skills', []),
                 "email": r.get('email', 'Not Found'),
@@ -207,9 +210,12 @@ def api_stats():
         else:
             avg_exp = 0
             
+        # Compute a deterministic average score based on experience to avoid hardcoding
+        det_avg_score = round(min(100, 60 + (avg_exp * 3)), 1) if total > 0 else 0
+        
         return jsonify({
             "total_candidates": total,
-            "avg_score": round(random.uniform(82, 91), 1) if total > 0 else 0,
+            "avg_score": det_avg_score,
             "avg_experience": avg_exp
         })
     except Exception as e:
@@ -260,12 +266,11 @@ def api_analytics():
         exp = c.get('experience', 0)
         edu = c.get('education', 'Not Found')
         
-        # Score formula: base from skills count + experience weight + education bonus
+        # Score formula: base from skills count + experience weight + education bonus (deterministic, no random hardcoding)
         skill_score = min(40, len([s for s in skills if s != 'N/A']) * 8)
         exp_score = min(30, exp * 3)
         edu_bonus = 20 if 'Master' in str(edu) else (15 if 'Bachelor' in str(edu) else 5)
-        noise = random.uniform(-5, 10)
-        score = max(10, min(100, skill_score + exp_score + edu_bonus + noise))
+        score = max(10, min(100, skill_score + exp_score + edu_bonus))
         
         candidate_scores.append(round(score, 1))
         exp_list.append(exp)

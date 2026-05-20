@@ -160,9 +160,37 @@ def search_best_candidates(jd_text, top_k=5):
     try:
         matches = list(collection.aggregate(pipeline))
     except Exception as e:
-        print(f"Vector search failed (index might not exist, using dummy ranking): {e}")
-        # Fallback if MongoDB Vector Search isn't set up yet on local, just for demonstration
-        return []
+        print(f"Vector search failed (index might not exist, computing locally): {e}")
+        # Fallback to local cosine similarity using the AI embeddings
+        import numpy as np
+        from numpy.linalg import norm
+        
+        all_chunks = list(collection.find({"embedding": {"$exists": True}}))
+        if not all_chunks:
+            return []
+            
+        jd_v = np.array(jd_vector)
+        norm_jd = norm(jd_v)
+        if norm_jd == 0: norm_jd = 1e-9
+        
+        matches = []
+        for chunk in all_chunks:
+            emb = np.array(chunk['embedding'])
+            norm_emb = norm(emb)
+            if norm_emb == 0: norm_emb = 1e-9
+            
+            sim = np.dot(jd_v, emb) / (norm_jd * norm_emb)
+            # Rescale similarity from [-1, 1] to [0, 1] for percentage
+            sim_normalized = (sim + 1) / 2
+            
+            matches.append({
+                "resume_id": chunk["resume_id"],
+                "chunk_text": chunk["chunk_text"],
+                "metadata": chunk["metadata"],
+                "score": float(sim_normalized)
+            })
+            
+        matches = sorted(matches, key=lambda x: x["score"], reverse=True)
     
     # Post-process: Get the top unique candidates
     seen = set()
