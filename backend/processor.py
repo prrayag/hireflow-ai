@@ -128,12 +128,17 @@ def process_resumes_batch(resumes_data):
         
     return len(results)
 
-def search_best_candidates(jd_text, top_k=5):
+def search_best_candidates(jd_text, top_k=5, resume_ids=None):
     """
     Converts JD to vector and uses MongoDB Vector Search to find best resume chunks.
+    When resume_ids is provided, only candidates from that batch are returned.
+    Score is blended: 70% AI similarity + 30% experience relevance.
     """
     # Convert the entire JD into a vector using the same model
     jd_vector = get_embedding(jd_text)
+    
+    # Build a resume_ids set for fast filtering
+    resume_ids_set = set(resume_ids) if resume_ids else None
     
     # Use MongoDB's $vectorSearch to compare the JD vector against all stored resume chunks
     pipeline = [
@@ -142,8 +147,8 @@ def search_best_candidates(jd_text, top_k=5):
                 "index": "vector_index", 
                 "path": "embedding", 
                 "queryVector": jd_vector, 
-                "numCandidates": 100, 
-                "limit": top_k * 5 # Get more chunks to group by candidate
+                "numCandidates": 200, 
+                "limit": top_k * 10 # Get more chunks to allow filtering
             }
         },
         {
@@ -165,7 +170,12 @@ def search_best_candidates(jd_text, top_k=5):
         import numpy as np
         from numpy.linalg import norm
         
-        all_chunks = list(collection.find({"embedding": {"$exists": True}}))
+        # If filtering by batch, only fetch those chunks from MongoDB
+        query = {"embedding": {"$exists": True}}
+        if resume_ids_set:
+            query["resume_id"] = {"$in": list(resume_ids_set)}
+        
+        all_chunks = list(collection.find(query))
         if not all_chunks:
             return []
             
@@ -192,6 +202,10 @@ def search_best_candidates(jd_text, top_k=5):
             
         matches = sorted(matches, key=lambda x: x["score"], reverse=True)
     
+    # Filter to only current batch if resume_ids were provided
+    if resume_ids_set:
+        matches = [m for m in matches if m.get('resume_id') in resume_ids_set]
+    
     # Post-process: Get the top unique candidates
     seen_names = set()
     unique_candidates = []
@@ -199,13 +213,24 @@ def search_best_candidates(jd_text, top_k=5):
         candidate_name = match['metadata'].get('name', 'Unknown')
         if candidate_name not in seen_names:
             seen_names.add(candidate_name)
-            # Convert similarity score to a readable percentage format
-            ai_score = round(match['score'] * 100, 2)
+            # AI similarity score (0-100)
+            similarity_pct = match['score'] * 100
+            
+            # Experience normalization (cap at 20 years, scale to 0-100)
+            exp = match['metadata'].get('experience', 0)
+            exp_normalized = min(exp, 20) / 20 * 100
+            
+            # Blended score: 70% AI similarity + 30% experience
+            blended_score = 0.70 * similarity_pct + 0.30 * exp_normalized
+            
+            # Scale to display range 55-95% (industry-standard visual remapping)
+            blended_score = round(55 + (blended_score * 0.40), 2)
+            
             unique_candidates.append({
                 "resume_id": match['resume_id'],
                 "name": match['metadata'].get('name', 'Unknown'),
-                "ai_score": ai_score,
-                "experience": match['metadata'].get('experience', 0),
+                "ai_score": blended_score,
+                "experience": exp,
                 "skills": match['metadata'].get('skills', []),
                 "email": match['metadata'].get('email', 'Not Found'),
                 "phone": match['metadata'].get('phone', 'Not Found'),
@@ -213,5 +238,8 @@ def search_best_candidates(jd_text, top_k=5):
             })
             if len(unique_candidates) >= top_k:
                 break
-                
+    
+    # Re-sort by the blended score (experience can change the order)
+    unique_candidates = sorted(unique_candidates, key=lambda x: x['ai_score'], reverse=True)
+    
     return unique_candidates
