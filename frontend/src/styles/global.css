@@ -1,116 +1,185 @@
-/* global.css - base styles and CSS variables for the whole app */
-/* importing our fonts from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap');
+/* global.css — HireFlow AI — dual-theme design system
+   Default (no attribute / data-theme="dark") = DARK
+   data-theme="light"  = LIGHT
+*/
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&display=swap');
 
-/* color palette - we're sticking to these colors across the entire app */
+/* ═══════════════════════════════════════════
+   DARK MODE  (default)
+═══════════════════════════════════════════ */
 :root {
-  --orange: #FF6B00;
-  --sage: #8FA896;
-  --cream: #E8EAD8;
-  --charcoal: #2A2A2A;
-  --white: #FFFFFF;
-  --light-gray: #F4F4F2;
+  /* Backgrounds */
+  --bg:           #080b12;
+  --bg-surface:   #0d1018;
+  --bg-card:      #111520;
+  --bg-elevated:  #181d2a;
 
-  /* some extra variables so we don't repeat ourselves */
-  --orange-hover: #e55f00;
-  --border-radius: 12px;
-  --shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.10);
-  --transition: all 0.2s ease;
+  /* Text */
+  --text:         #f0f0f0;
+  --text-muted:   #888888;
+  --text-faint:   #555555;
+  --ink:          #f0f0f0;
+  --ink-muted:    #888888;
+  --ink-faint:    #555555;
+
+  /* Borders */
+  --border:       rgba(255,255,255,0.08);
+  --border-strong:rgba(255,255,255,0.14);
+
+  /* Accent */
+  --accent:       #3b7ef8;
+  --accent-dim:   rgba(59,126,248,0.15);
+  --accent-hover: #5b96ff;
+
+  /* Typography */
+  --sans:         'Plus Jakarta Sans', system-ui, sans-serif;
+  --serif:        'Instrument Serif', Georgia, serif;
+  --font-sans:    var(--sans);
+  --font-serif:   var(--serif);
+
+  /* Legacy */
+  --charcoal:     #888888;
+  --white:        #161616;
+  --cream:        #080b12;
+
+  /* Glass */
+  --glass-bg:     rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.10);
+  --glass-blur:   blur(16px);
+  --glass-hover:  rgba(255,255,255,0.07);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.35);
+
+  /* Shadows */
+  --shadow:       0 2px 16px rgba(0,0,0,0.4);
+  --shadow-hover: 0 6px 32px rgba(0,0,0,0.6);
+  --shadow-glow:  0 0 24px rgba(59,126,248,0.2);
+
+  /* Misc */
+  --radius:       12px;
+  --ease:         cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:   all 0.2s var(--ease);
 }
 
-/* basic reset - every tutorial says to do this */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ═══════════════════════════════════════════
+   LIGHT MODE  (data-theme="light")
+═══════════════════════════════════════════ */
+[data-theme="light"] {
+  --bg:           #f5f6fa;
+  --bg-surface:   #ffffff;
+  --bg-card:      #ffffff;
+  --bg-elevated:  #eef0f7;
+
+  --text:         #0f1117;
+  --text-muted:   #6b7280;
+  --text-faint:   #b0b7c3;
+  --ink:          #0f1117;
+  --ink-muted:    #6b7280;
+  --ink-faint:    #b0b7c3;
+
+  --border:       rgba(0,0,0,0.07);
+  --border-strong:rgba(0,0,0,0.13);
+
+  --accent:       #3b7ef8;
+  --accent-dim:   rgba(59,126,248,0.09);
+  --accent-hover: #2563eb;
+
+  --charcoal:     #b0b7c3;
+  --white:        #ffffff;
+  --cream:        #f5f6fa;
+
+  --glass-bg:     rgba(255,255,255,0.70);
+  --glass-border: rgba(0,0,0,0.07);
+  --glass-hover:  rgba(255,255,255,0.90);
+  --glass-shadow: 0 4px 24px rgba(0,0,0,0.07);
+
+  --shadow:       0 2px 16px rgba(0,0,0,0.07);
+  --shadow-hover: 0 6px 32px rgba(0,0,0,0.12);
+  --shadow-glow:  0 0 24px rgba(59,126,248,0.18);
 }
 
-html {
-  scroll-behavior: smooth;
-}
+/* ═══════════════════════════════════════════
+   BASE RESETS
+═══════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background-color: var(--cream);
-  color: var(--charcoal);
+  font-family: var(--sans);
+  background-color: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Sora', sans-serif;
-  line-height: 1.2;
+  font-family: var(--sans);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text);
+  letter-spacing: -0.03em;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
+a { text-decoration: none; color: inherit; }
 
 button {
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   border: none;
   outline: none;
 }
 
-img {
-  max-width: 100%;
-  display: block;
-}
+img { max-width: 100%; display: block; }
 
-/* utility button styles used across multiple pages */
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.5); }
+
+/* ═══════════════════════════════════════════
+   GLOBAL BUTTONS
+═══════════════════════════════════════════ */
 .btn-primary {
-  background-color: var(--orange);
-  color: var(--white);
-  padding: 14px 32px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
   transition: var(--transition);
-  border: 2px solid var(--orange);
+  border: 1px solid var(--accent);
+  letter-spacing: -0.01em;
 }
-
 .btn-primary:hover {
-  background-color: var(--orange-hover);
-  border-color: var(--orange-hover);
+  background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-glow);
 }
 
 .btn-secondary {
-  background-color: var(--white);
-  color: var(--charcoal);
-  padding: 14px 32px;
-  border-radius: 8px;
-  font-size: 1rem;
+  background: transparent;
+  color: var(--text);
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
-  border: 2px solid var(--charcoal);
+  border: 1px solid var(--border-strong);
   transition: var(--transition);
 }
-
 .btn-secondary:hover {
-  background-color: var(--charcoal);
-  color: var(--white);
-  transform: translateY(-1px);
+  background: var(--bg-elevated);
 }
 
-/* container for centering content */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
 }
 
-.animate-on-scroll { 
-    opacity: 0; 
-    transform: translateY(30px); 
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out; 
-} 
-.animate-on-scroll.revealed { 
-    opacity: 1; 
-    transform: translateY(0); 
-}
+/* GSAP reveal helpers */
+.gsap-reveal       { opacity: 0; transform: translateY(28px); }
+.gsap-reveal-left  { opacity: 0; transform: translateX(-28px); }
+.gsap-reveal-right { opacity: 0; transform: translateX(28px); }

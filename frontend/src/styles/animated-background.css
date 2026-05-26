@@ -1,81 +1,75 @@
-/* animated-background.css - subtle, professional animated background */
+/* animated-background.css — dual-theme (dark default, light override) */
 
 .animated-bg-container {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
     overflow: hidden;
     z-index: -1;
     pointer-events: none;
-    background-color: var(--cream);
+    background-color: var(--bg);
+    transition: background-color 0.3s;
 }
 
 .bg-shape {
     position: absolute;
-    filter: blur(80px);
+    filter: blur(90px);
     border-radius: 50%;
-    opacity: 0.6;
-    animation: float 20s infinite ease-in-out alternate;
+    animation: bg-float 20s infinite ease-in-out alternate;
 }
 
+/* DARK: deep blue + purple + teal blobs */
 .shape-1 {
-    width: 40vw;
-    height: 40vw;
-    background: radial-gradient(circle, rgba(143, 168, 150, 0.4) 0%, rgba(143, 168, 150, 0) 70%);
-    top: -10vw;
-    left: -10vw;
+    width: 45vw; height: 45vw;
+    background: radial-gradient(circle, rgba(59,126,248,0.18) 0%, rgba(59,126,248,0) 70%);
+    top: -10vw; left: -8vw;
     animation-delay: 0s;
+    opacity: 0.7;
 }
-
 .shape-2 {
-    width: 45vw;
-    height: 45vw;
-    background: radial-gradient(circle, rgba(255, 107, 0, 0.15) 0%, rgba(255, 107, 0, 0) 70%);
-    bottom: -15vw;
-    right: -10vw;
-    animation-delay: -5s;
-    animation-duration: 25s;
+    width: 40vw; height: 40vw;
+    background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0) 70%);
+    bottom: -12vw; right: -8vw;
+    animation-delay: -5s; animation-duration: 25s;
+    opacity: 0.6;
 }
-
 .shape-3 {
-    width: 30vw;
-    height: 30vw;
-    background: radial-gradient(circle, rgba(42, 42, 42, 0.05) 0%, rgba(42, 42, 42, 0) 70%);
-    top: 40vh;
-    left: 40vw;
-    animation-delay: -10s;
-    animation-duration: 18s;
+    width: 30vw; height: 30vw;
+    background: radial-gradient(circle, rgba(52,211,153,0.10) 0%, rgba(52,211,153,0) 70%);
+    top: 40vh; left: 40vw;
+    animation-delay: -10s; animation-duration: 18s;
+    opacity: 0.5;
 }
 
+/* LIGHT overrides: softer, paler blobs */
+[data-theme="light"] .shape-1 {
+    background: radial-gradient(circle, rgba(59,126,248,0.09) 0%, rgba(59,126,248,0) 70%);
+    opacity: 0.8;
+}
+[data-theme="light"] .shape-2 {
+    background: radial-gradient(circle, rgba(139,92,246,0.07) 0%, rgba(139,92,246,0) 70%);
+}
+[data-theme="light"] .shape-3 {
+    background: radial-gradient(circle, rgba(52,211,153,0.06) 0%, rgba(52,211,153,0) 70%);
+}
+
+/* Dot-grid texture overlay */
 .bg-texture-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2;
-    opacity: 0.1;
+    inset: 0; z-index: 2;
     pointer-events: none;
-    background-image: radial-gradient(var(--charcoal) 1.5px, transparent 1.5px);
-    background-size: 32px 32px;
+    background-image: radial-gradient(rgba(255,255,255,0.07) 1.5px, transparent 1.5px);
+    background-size: 28px 28px;
+    opacity: 1;
+    transition: background-image 0.3s;
+}
+[data-theme="light"] .bg-texture-overlay {
+    background-image: radial-gradient(rgba(0,0,0,0.055) 1.5px, transparent 1.5px);
 }
 
-@keyframes float {
-    0% {
-        transform: translate(0, 0) scale(1);
-    }
-
-    33% {
-        transform: translate(3vw, -5vh) scale(1.05);
-    }
-
-    66% {
-        transform: translate(-2vw, 4vh) scale(0.95);
-    }
-
-    100% {
-        transform: translate(1vw, -2vh) scale(1.1);
-    }
+@keyframes bg-float {
+    0%   { transform: translate(0, 0) scale(1); }
+    33%  { transform: translate(3vw, -5vh) scale(1.05); }
+    66%  { transform: translate(-2vw, 4vh) scale(0.95); }
+    100% { transform: translate(1vw, -2vh) scale(1.1); }
 }

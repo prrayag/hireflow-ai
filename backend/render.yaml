@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: hireflow-backend
+    env: docker
+    region: ohio
+    plan: free # Changed to free tier to avoid payment prompts
+    healthCheckPath: /api/stats
+    envVars:
+      - key: PORT
+        value: 5001
+      # Note: Make sure to add your MongoDB URI in the Render dashboard if needed

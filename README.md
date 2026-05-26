@@ -1,146 +1,148 @@
 # HireFlow AI
 
-> **AI-Powered Resume Screening & Ranking Pipeline** — Upload resumes, score candidates with ML, and find the right talent faster using semantic matching and predictive analytics.
-
-Built by a team of CS students as a high-performance recruitment analytics platform.
-
-![HireFlow AI Dashboard](https://raw.githubusercontent.com/prrayag/hireflow-ai/main/docs/assets/mockup.png) <!-- Placeholder for actual UI screenshot -->
+AI-powered resume ranking and analytics platform. Upload resumes, score candidates with a hybrid TabTransformer + TF-IDF pipeline, and visualise hiring analytics live from MongoDB.
 
 ---
 
-## 🚀 Key Features (V2 Optimized)
+## Quick Start
 
-### 🧠 Hybrid ML Scoring
-The system uses a blended scoring formula that combines deterministic keywords with machine learning and NLP:
-*   **Random Forest Classifier**: Trained on 1,100+ historical resume records to predict candidate suitability.
-*   **Sentence-BERT (SBERT)**: Calculates cosine similarity between resumes and the Job Description (JD) for semantic mapping.
-*   **Multi-Feature Scoring**: Weighted scoring based on skill overlap (22%), experience (13%), education quality (10%), and project relevance (15%).
+### Windows (your friend's machine)
 
-### 📄 Multi-Format OCR Pipeline
-High-accuracy text extraction handled via a sophisticated parsing engine:
-*   **Supported Formats**: PDF, DOCX, DOC, and Images (PNG, JPG, BMP).
-*   **OCR Support**: Integrated **EasyOCR** for scanned PDFs and image-based resumes.
-*   **Section-Aware Extraction**: Automatically identifies sections for work, education, projects, and skills.
-
-### 🎓 Education Quality & Project Analysis
-*   **Degree Level Scoring**: PhD (1.0) to Diploma (0.4) scoring based on qualification.
-*   **Field Relevance**: Bonus points for degrees matching the job domain.
-*   **Project Relevance**: Individual projects are split and scored semantically against JD requirements.
-
-### ⚛️ Premium UI Experience
-*   **Animated Particle Background**: Ambience-enhancing interactive visualization in the dashboard.
-*   **Glassmorphism Dashboard**: Modern dark-themed UI with real-time scoring visualizations.
-*   **Anomaly Detection**: Automatic flagging of "keyword stuffing" or abnormally formatted resumes.
-
----
-
-## 📊 Performance Metrics
-The model is validated for high precision in candidate ranking:
-- **Accuracy**: 95.12% on cross-industry test sets.
-- **Inference Speed**: ~50ms per resume (leveraging JD embedding caching).
-- **Cross-Validation**: 96.43% (5-fold) accuracy.
-
----
-
-## 🏗️ Technical Architecture
-
-```mermaid
-graph TD
-    A[User Uploads Resumes & JD] --> B{Resume Parser}
-    B -->|PDF/DOCX| C[Text Pre-processing]
-    B -->|IMG/Scanned| D[EasyOCR Engine]
-    C --> E[Section Splitting]
-    D --> E
-    E --> F[Feature Extraction]
-    F --> G[Hybrid Scorer]
-    G -->|Deterministic| H[Keyword Overlap]
-    G -->|Sentence-BERT| I[Project/Skill Similarity]
-    G -->|ML Model| J[Random Forest Ranking]
-    H & I & J --> K[Final Ranked Result]
-    K --> L[Dashboard Visualization]
+**First time only — run setup:**
+```
+Double-click: setup_windows.bat
 ```
 
----
+**Every time you want to start the app:**
+```
+Double-click: start_windows.bat
+```
 
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework**: React 18 (Vite)
-- **Styling**: Vanilla CSS (Custom Design System with Glassmorphism)
-- **Animations**: Custom `ParticleBackground.jsx` implementation.
-- **Tools**: Axios, React Router, Lucide-react.
-
-### Backend
-- **Engine**: Python 3.10+ (Flask)
-- **Machine Learning**: `scikit-learn` (Random Forest), `sentence-transformers` (all-MiniLM-L6-v2)
-- **NLP**: `numpy`, `pandas`, Cosine Similarity for semantic matching.
-- **Parsing**: `PyMuPDF` (PDF), `python-docx` (DOCX), `mammoth` (DOC), `EasyOCR` & `Pillow` (Images).
-- **Storage**: JSON-based persistent "Data Lake" for audit logs and training data.
+That's it. It opens the app in your browser automatically.
 
 ---
 
-## 🚀 Deployment (Vercel)
+### Mac (Prayag's machine)
 
-HireFlow AI is designed for easy deployment as a monorepo setup on **Vercel**.
+**First time only:**
+```bash
+# Backend
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-### 1. Backend (Flask API)
-The backend is ready for Vercel Serverless Functions.
-*   **Vercel Config**: Already includes `backend/vercel.json` and `backend/wsgi.py`.
-*   **Steps**:
-    1. Import the repository to Vercel.
-    2. Set the **Root Directory** to `backend`.
-    3. Install dependencies automatically via `requirements.txt`.
+# Frontend
+cd ../frontend
+npm install
+```
 
-### 2. Frontend (Vite App)
-*   **Command**: `npm run build`
-*   **Output Directory**: `dist`
-*   **Environment Variables**:
-    *   Set `VITE_API_URL` to your Vercel backend URL (e.g., `https://your-api.vercel.app`).
-    *   Vite will automatically use this URL when building the production app.
+**Every time:**
+```bash
+# Terminal 1 — Backend
+cd backend && source venv/bin/activate && python3 app.py
 
----
+# Terminal 2 — Frontend
+cd frontend && npm run dev
+```
 
-## ⚙️ Local Setup (Windows Recommended)
-
-### Quick Start (Unified Launcher)
-1. **Prerequisites**: Python 3.10+ and Node.js 18+.
-2. **Setup**:
-   ```bash
-   pip install -r backend/requirements.txt
-   cd frontend && npm install && cd ..
-   ```
-3. **Launch**:
-   ```bash
-   python start.py
-   ```
-   *This starts both the Flask backend (5001) and Vite backend (5173).*
+Then open: **http://localhost:5173**
 
 ---
 
-## 📂 Project Structure
+## Requirements
 
-```text
-hireflow-ai/
+| Tool | Version | Download |
+|------|---------|----------|
+| Python | 3.10+ | https://python.org |
+| Node.js | 18+ (LTS) | https://nodejs.org |
+| npm | comes with Node | — |
+
+---
+
+## Project Structure
+
+```
+HireFlowAI/
 ├── backend/
-│   ├── app.py              # Main API Orchestration
-│   ├── resume_features.py  # Central Feature Extraction (DRY)
-│   ├── candidate_scorer.py # ML Inference pipeline
-│   ├── train_model.py      # ML Training Pipeline
-│   ├── resume_parser.py    # Multi-format parsing & OCR
-│   ├── model.pkl           # Trained RF model
-│   └── vercel.json         # Serverless configuration
+│   ├── app.py                  # Flask API server
+│   ├── candidate_scorer.py     # TabTransformer + TF-IDF hybrid scorer
+│   ├── resume_parser.py        # PDF/DOCX/image text extraction
+│   ├── resume_features.py      # Skill extraction, JD matching
+│   ├── json_storage.py         # Saves results to JSON + MongoDB
+│   ├── config.py               # MongoDB connection string
+│   ├── tab_transformer.pth     # Trained model weights
+│   ├── label_encoders.pkl      # Categorical encoders
+│   └── requirements.txt        # Python dependencies
+│
 ├── frontend/
-│   ├── src/
-│   │   ├── components/     # UI Components (ParticleBackground, etc.)
-│   │   ├── config.js       # Production API configuration
-│   │   └── pages/          # Dashboard, Result views
-│   └── vite.config.js
-├── scripts/
-│   └── start.py            # Unified launcher
-└── docs/
-    └── assets/             # UI Screenshots and Architecture assets
+│   └── src/
+│       ├── pages/              # LandingPage, Dashboard, UploadPage, AnalyticsPage
+│       ├── components/         # Navbar, CandidateTable, AnimatedBackground
+│       ├── styles/             # CSS per page + global tokens
+│       └── hooks/              # useTheme, useScrollReveal
+│
+├── setup_windows.bat           # Windows: first-time install
+├── start_windows.bat           # Windows: daily start script
+└── start.py                    # Mac: alternative start script
 ```
 
 ---
 
-*HireFlow AI © 2026*
+## How It Works
+
+1. **Upload** — Drop PDF/DOCX/image resumes (single files or ZIP)
+2. **Parse** — Text is extracted using pdfplumber + easyOCR (fallback for scanned PDFs)
+3. **Score** — 3-component hybrid score out of 100:
+   - `TabTransformer (0–40)` — neural network on structured fields (experience, skills count, dept)
+   - `Vector Similarity (0–35)` — candidate vs JD embedding cosine similarity
+   - `TF-IDF Match (0–25)` — text overlap between resume and job description
+4. **Store** — Results saved to local JSON and pushed to **MongoDB Atlas**
+5. **Rank** — Candidates sorted by total score on the Dashboard
+6. **Analyse** — Analytics page reads live from MongoDB (241+ candidates)
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/upload` | POST | Upload resumes (multipart/form-data) |
+| `/results` | GET | Get latest batch (reads MongoDB first) |
+| `/api/big-data-stats` | GET | Analytics data for charts (MongoDB) |
+| `/json-data` | GET | Full local JSON storage dump |
+
+---
+
+## MongoDB
+
+Connected to **MongoDB Atlas** — cluster `HireFlowAI`, database `hireflow_db`, collection `candidates`.
+
+Each candidate document:
+```json
+{
+  "name": "Vishv Patel",
+  "email": "vishv@gmail.com",
+  "phone": "+91 ...",
+  "score": 72.9,
+  "shortlisted": true,
+  "tab_transformer_score": 12.9,
+  "vector_similarity_score": 35.0,
+  "tfidf_score": 25.0,
+  "skills": ["Python", "Node.js", "AWS", ...],
+  "jd_matched_skills": ["Python", "AWS"],
+  "experience_years": 4,
+  "education": "B.Tech CSE",
+  "batch_id": "...",
+  "uploaded_at": "2026-05-01T..."
+}
+```
+
+---
+
+## Notes for Windows Users
+
+- If you get a **"Python not found"** error, reinstall Python and tick ✅ **"Add to PATH"**
+- If you get a **"npm not found"** error, restart your terminal after installing Node.js
+- The first time `setup_windows.bat` runs it may take 5–10 minutes (downloading ML packages)
+- **easyOCR** downloads ~100MB of models on first use — that's normal
