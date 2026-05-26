@@ -3,7 +3,7 @@ services:
     name: hireflow-backend
     env: docker
     region: ohio
-    plan: starter # PySpark might need a paid tier or larger instance due to RAM usage
+    plan: free # Changed to free tier to avoid payment prompts
     healthCheckPath: /api/stats
     envVars:
       - key: PORT
