@@ -482,3 +482,5 @@ print(f"\nDone! {len(generated)} resumes + ZIP created in: {OUT_DIR}")
 print(f"  ZIP: {zip_path}")
 for p in generated:
     print(f"  {p.name}")
+#i actually created this pr a long time ago and
+#i am stll improving
