@@ -6,9 +6,15 @@ from pyspark import SparkConf
 
 # Connect to MongoDB Atlas Vector Search
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-client = MongoClient(MONGO_URI)
-db = client["hireflow_db"]
-collection = db["resumes"]
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
+    client.server_info() # force connection check
+    db = client["hireflow_db"]
+    collection = db["resumes"]
+except:
+    collection = None
+
+mock_db_storage = []
 
 # ─── Spark Session (Singleton with UI Enabled) ────────────────────────────────
 _spark = None
@@ -123,8 +129,15 @@ def process_resumes_batch(resumes_data):
     
     # ── Stage 5: Bulk insert into MongoDB ──
     if results:
-        # Use ordered=False for parallel inserts on large batches
-        collection.insert_many(results, ordered=False)
+        global mock_db_storage
+        try:
+            if collection is not None:
+                collection.insert_many(results, ordered=False)
+            else:
+                mock_db_storage.extend(results)
+        except Exception as e:
+            print(f"MongoDB insert failed, using mock storage: {e}")
+            mock_db_storage.extend(results)
         
     return len(results)
 
@@ -171,11 +184,23 @@ def search_best_candidates(jd_text, top_k=5, resume_ids=None):
         from numpy.linalg import norm
         
         # If filtering by batch, only fetch those chunks from MongoDB
-        query = {"embedding": {"$exists": True}}
+        global mock_db_storage
+        all_chunks = []
+        try:
+            if collection is not None:
+                query = {"embedding": {"$exists": True}}
+                if resume_ids_set:
+                    query["resume_id"] = {"$in": list(resume_ids_set)}
+                all_chunks = list(collection.find(query))
+            else:
+                all_chunks = mock_db_storage
+        except Exception as e:
+            print(f"Failed to fetch from MongoDB, using mock storage: {e}")
+            all_chunks = mock_db_storage
+            
         if resume_ids_set:
-            query["resume_id"] = {"$in": list(resume_ids_set)}
-        
-        all_chunks = list(collection.find(query))
+            all_chunks = [c for c in all_chunks if c.get('resume_id') in resume_ids_set]
+            
         if not all_chunks:
             return []
             

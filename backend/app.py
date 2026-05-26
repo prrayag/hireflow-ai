@@ -608,5 +608,6 @@ def api_export():
 if __name__ == '__main__':
     # Initialize Spark eagerly so the Spark UI is available at http://localhost:4040
     get_spark()
-    print("[HireFlow] Backend ready. Flask on :5001, Spark UI on :4040")
-    app.run(debug=True, port=5001, use_reloader=False)
+    port = int(os.environ.get("PORT", 5001))
+    print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
