@@ -31,7 +31,7 @@ def get_spark():
             .set("spark.ui.enabled", "true") \
             .set("spark.ui.port", "4040") \
             .set("spark.ui.showConsoleProgress", "true") \
-            .set("spark.driver.memory", "2g") \
+            .set("spark.driver.memory", "300m") \
             .set("spark.sql.shuffle.partitions", "8") \
             .set("spark.default.parallelism", "8") \
             .set("spark.rdd.compress", "true") \
