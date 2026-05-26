@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: hireflow-backend
+    env: docker
+    region: ohio
+    plan: starter # PySpark might need a paid tier or larger instance due to RAM usage
+    healthCheckPath: /api/stats
+    envVars:
+      - key: PORT
+        value: 5001
+      # Note: Make sure to add your MongoDB URI in the Render dashboard if needed
