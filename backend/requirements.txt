@@ -11,3 +11,5 @@ pandas
 PyMuPDF
 easyocr
 Pillow
+python-docx
+reportlab

@@ -6,7 +6,7 @@ os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from processor import process_resumes_batch, search_best_candidates, collection, get_spark
+from processor import process_resumes_batch, search_best_candidates, collection, get_spark, client
 import matplotlib
 matplotlib.use('Agg') # Non-interactive backend
 import matplotlib.pyplot as plt
@@ -71,11 +71,18 @@ def api_upload():
                 text = " ".join(result)
             except Exception as e:
                 print(f"Error parsing Image {filename}: {e}")
-        elif filename_lower.endswith('.txt') or filename_lower.endswith('.docx'):
+        elif filename_lower.endswith('.txt'):
             try:
                 text = file_bytes.decode('utf-8', errors='ignore')
             except Exception:
                 pass
+        elif filename_lower.endswith('.docx'):
+            try:
+                import docx
+                doc = docx.Document(io.BytesIO(file_bytes))
+                text = "\n".join([p.text for p in doc.paragraphs if p.text])
+            except Exception as e:
+                print(f"Error parsing DOCX {filename}: {e}")
         return text
         
     def extract_metadata(text):
@@ -85,8 +92,23 @@ def api_upload():
         phone_match = re.search(r'\+?\d[\d\s-]{8,14}\d', text)
         phone = phone_match.group(0) if phone_match else "Not Found"
         
-        # Simple keyword-based skill extraction
-        skill_keywords = ['Python', 'Java', 'C++', 'React', 'Node.js', 'SQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'Spark', 'Hadoop', 'CSS', 'HTML', 'JavaScript', 'Django', 'FastAPI', 'Azure', 'GCP', 'Pandas', 'TensorFlow', 'PyTorch']
+        # Comprehensive keyword-based skill extraction (from GitHub repo)
+        skill_keywords = [
+            'Python', 'Java', 'C++', 'C#', 'React', 'Node.js', 'SQL', 'MongoDB',
+            'AWS', 'Docker', 'Kubernetes', 'Spark', 'Hadoop', 'CSS', 'HTML',
+            'JavaScript', 'TypeScript', 'Django', 'FastAPI', 'Azure', 'GCP',
+            'Pandas', 'TensorFlow', 'PyTorch', 'Flask', 'Spring Boot', 'Express',
+            'Next.js', 'GraphQL', 'Redis', 'PostgreSQL', 'MySQL', 'Firebase',
+            'Terraform', 'Ansible', 'Jenkins', 'Git', 'Linux', 'Bash',
+            'Kotlin', 'Swift', 'Go', 'Rust', 'Ruby', 'PHP', 'R',
+            'Tableau', 'Power BI', 'Excel', 'Figma', 'Sketch',
+            'Airflow', 'MLflow', 'Kafka', 'RabbitMQ', 'ElasticSearch',
+            'NumPy', 'Matplotlib', 'scikit-learn', 'Hugging Face',
+            'REST APIs', 'Microservices', 'Serverless', 'Lambda',
+            'JIRA', 'Confluence', 'Agile', 'Scrum', 'CI/CD',
+            'Prometheus', 'Grafana', 'Snowflake', 'Looker',
+            'Jetpack Compose', 'Android SDK', 'Material Design'
+        ]
         found_skills = []
         text_lower = text.lower()
         for skill in skill_keywords:
@@ -95,31 +117,59 @@ def api_upload():
                 
         # Education extraction (heuristic)
         edu = "Not Found"
-        if "b.tech" in text_lower or "b.e" in text_lower or "bachelor" in text_lower:
+        if "b.tech" in text_lower or "b.e" in text_lower or "bachelor" in text_lower or "b.sc" in text_lower or "b.des" in text_lower or "b.e." in text_lower:
             edu = "Bachelor's Degree"
-        if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower:
+        if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower or "m.sc" in text_lower or "m.s." in text_lower:
             edu = "Master's Degree"
             
-        # Experience extraction (advanced heuristic using regex and date ranges)
+        # Experience extraction (multi-strategy heuristic from GitHub repo)
         exp = 0
-        exp_match = re.search(r'(\d+)\+?\s*(?:years?|yrs?).*?(?:experience|exp\b)', text_lower)
-        if exp_match:
-            exp = int(exp_match.group(1))
-        else:
-            # Fallback: sum up date ranges (e.g., 2018 - 2022)
-            date_ranges = re.findall(r'(20\d{2})\s*(?:-|to|–)\s*(20\d{2}|present|now|current)', text_lower)
-            for start, end in date_ranges:
-                start_yr = int(start)
-                end_yr = 2024 if end in ['present', 'now', 'current'] else int(end)
-                if end_yr >= start_yr:
-                    exp += (end_yr - start_yr)
         
-        if exp > 40: exp = 0 # sanity check
+        # Strategy 1: Explicit "X years of experience" or "X+ years experience"
+        exp_match = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp\b)', text_lower)
+        if exp_match:
+            exp = int(float(exp_match.group(1)))
+        
+        # Strategy 2: "experience of X years"
+        if exp == 0:
+            exp_match2 = re.search(r'(?:experience|exp)\s+(?:of\s+)?(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
+            if exp_match2:
+                exp = int(float(exp_match2.group(1)))
+        
+        # Strategy 3: "with X years" (common in summaries like "Engineer with 6 years")
+        if exp == 0:
+            exp_match3 = re.search(r'with\s+(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
+            if exp_match3:
+                exp = int(float(exp_match3.group(1)))
+        
+        # Strategy 4: Standalone "X years" near job-related context
+        if exp == 0:
+            exp_match4 = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:in|of|at|as|working|building|developing|designing|managing)', text_lower)
+            if exp_match4:
+                exp = int(float(exp_match4.group(1)))
+        
+        # Strategy 5 (Fallback): Compute career span from date ranges
+        # Use SPAN (latest end - earliest start) NOT sum, to avoid inflation
+        if exp == 0:
+            date_ranges = re.findall(r'(20\d{2})\s*(?:-|to|–|—)\s*(20\d{2}|present|now|current)', text_lower)
+            if date_ranges:
+                all_starts = []
+                all_ends = []
+                for start, end in date_ranges:
+                    s = int(start)
+                    e = 2025 if end in ['present', 'now', 'current'] else int(end)
+                    if s >= 2010 and e >= s:
+                        all_starts.append(s)
+                        all_ends.append(e)
+                if all_starts and all_ends:
+                    exp = max(all_ends) - min(all_starts)
+        
+        if exp > 25: exp = 25 # sanity cap
         
         return {
             "email": email,
             "phone": phone,
-            "skills": found_skills[:5] if found_skills else ["N/A"],
+            "skills": found_skills[:10] if found_skills else ["N/A"],
             "education": edu,
             "experience": exp
         }
@@ -168,16 +218,21 @@ def api_upload():
 
     if not resumes:
         return jsonify({"error": "No readable text found in uploaded files."}), 400
-        
-    # 1. Process resumes in parallel with PySpark, generate embeddings, save to Mongo
-    t_start = time.time()
-    chunks_inserted = process_resumes_batch(resumes)
-    spark_time = round(time.time() - t_start, 2)
-    
-    # 2. Search for best candidates using JobBERT + Vector Search
-    t_search = time.time()
-    rankings = search_best_candidates(jd_text, top_k=10)
-    search_time = round(time.time() - t_search, 2)
+
+    try:
+        # 1. Process resumes (Spark or Python fallback), generate embeddings, save to Mongo
+        t_start = time.time()
+        chunks_inserted = process_resumes_batch(resumes)
+        spark_time = round(time.time() - t_start, 2)
+
+        # 2. Search for best candidates using JobBERT + Vector Search (scoped to uploaded batch)
+        t_search = time.time()
+        uploaded_ids = [r['resume_id'] for r in resumes]
+        rankings = search_best_candidates(jd_text, top_k=10, resume_ids=uploaded_ids)
+        search_time = round(time.time() - t_search, 2)
+    except Exception as e:
+        print(f"Upload processing error: {e}")
+        return jsonify({"error": f"Processing failed: {str(e)}"}), 500
     
     # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
@@ -552,8 +607,29 @@ def api_export():
         headers={'Content-Disposition': 'attachment; filename=HireFlow_Rankings.csv'}
     )
 
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    """Quick health check for frontend and debugging."""
+    mongo_ok = False
+    if client is not None:
+        try:
+            client.admin.command('ping')
+            mongo_ok = True
+        except Exception:
+            mongo_ok = False
+    return jsonify({
+        "status": "ok",
+        "mongodb": mongo_ok,
+        "spark": get_spark() is not None,
+    })
+
 if __name__ == '__main__':
-    # Initialize Spark eagerly so the Spark UI is available at http://localhost:4040
-    get_spark()
-    print("[HireFlow] Backend ready. Flask on :5001, Spark UI on :4040")
-    app.run(debug=True, port=5001, use_reloader=False)
+    spark = get_spark()
+    port = int(os.environ.get("PORT", 5001))
+    if spark:
+        print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
+    else:
+        print(f"[HireFlow] Backend ready. Flask on :{port} (Python mode — no Spark/Java 17)")
+    host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    app.run(host=host, port=port, debug=False, use_reloader=False)
+
