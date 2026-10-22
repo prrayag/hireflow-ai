@@ -11,6 +11,7 @@ try:
     client.server_info() # force connection check
     db = client["hireflow_db"]
     collection = db["resumes"]
+
 except Exception as e:
     print(f"[HireFlow] MongoDB connection warning: {e}. Using in-memory fallback storage.")
     client = None
@@ -43,7 +44,7 @@ def get_spark():
             .set("spark.ui.enabled", "true") \
             .set("spark.ui.port", "4040") \
             .set("spark.ui.showConsoleProgress", "true") \
-            .set("spark.driver.memory", "2g") \
+            .set("spark.driver.memory", "300m") \
             .set("spark.sql.shuffle.partitions", "8") \
             .set("spark.default.parallelism", "8") \
             .set("spark.rdd.compress", "true") \
@@ -201,7 +202,10 @@ def search_best_candidates(jd_text, top_k=5, resume_ids=None):
         import numpy as np
         from numpy.linalg import norm
         
+
         # If filtering by batch, only fetch those chunks from MongoDB or mock storage
+
+
         global mock_db_storage
         all_chunks = []
         try:
@@ -281,7 +285,7 @@ def search_best_candidates(jd_text, top_k=5, resume_ids=None):
             })
             if len(unique_candidates) >= top_k:
                 break
-                
+
     # Re-sort by the blended score (experience can change the order)
     unique_candidates = sorted(unique_candidates, key=lambda x: x['ai_score'], reverse=True)
     

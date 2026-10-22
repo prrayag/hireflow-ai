@@ -71,6 +71,7 @@ def api_upload():
                 text = " ".join(result)
             except Exception as e:
                 print(f"Error parsing Image {filename}: {e}")
+
         elif filename_lower.endswith('.txt'):
             try:
                 text = file_bytes.decode('utf-8', errors='ignore')
@@ -92,7 +93,11 @@ def api_upload():
         phone_match = re.search(r'\+?\d[\d\s-]{8,14}\d', text)
         phone = phone_match.group(0) if phone_match else "Not Found"
         
+
         # Comprehensive keyword-based skill extraction (from GitHub repo)
+
+        # Comprehensive keyword-based skill extraction
+
         skill_keywords = [
             'Python', 'Java', 'C++', 'C#', 'React', 'Node.js', 'SQL', 'MongoDB',
             'AWS', 'Docker', 'Kubernetes', 'Spark', 'Hadoop', 'CSS', 'HTML',
@@ -122,7 +127,11 @@ def api_upload():
         if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower or "m.sc" in text_lower or "m.s." in text_lower:
             edu = "Master's Degree"
             
+
         # Experience extraction (multi-strategy heuristic from GitHub repo)
+
+        # Experience extraction (multi-strategy heuristic)
+
         exp = 0
         
         # Strategy 1: Explicit "X years of experience" or "X+ years experience"
@@ -158,6 +167,9 @@ def api_upload():
                 for start, end in date_ranges:
                     s = int(start)
                     e = 2025 if end in ['present', 'now', 'current'] else int(end)
+
+                    # Only consider work-era dates (after 2010) to skip education
+
                     if s >= 2010 and e >= s:
                         all_starts.append(s)
                         all_ends.append(e)
@@ -219,6 +231,7 @@ def api_upload():
     if not resumes:
         return jsonify({"error": "No readable text found in uploaded files."}), 400
 
+
     try:
         # 1. Process resumes (Spark or Python fallback), generate embeddings, save to Mongo
         t_start = time.time()
@@ -233,6 +246,9 @@ def api_upload():
     except Exception as e:
         print(f"Upload processing error: {e}")
         return jsonify({"error": f"Processing failed: {str(e)}"}), 500
+
+        
+
     
     # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
@@ -630,6 +646,5 @@ if __name__ == '__main__':
         print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
     else:
         print(f"[HireFlow] Backend ready. Flask on :{port} (Python mode — no Spark/Java 17)")
-    host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
-    app.run(host=host, port=port, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
