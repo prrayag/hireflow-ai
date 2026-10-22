@@ -6,7 +6,7 @@ os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from processor import process_resumes_batch, search_best_candidates, collection, get_spark
+from processor import process_resumes_batch, search_best_candidates, collection, get_spark, client
 import matplotlib
 matplotlib.use('Agg') # Non-interactive backend
 import matplotlib.pyplot as plt
@@ -71,18 +71,19 @@ def api_upload():
                 text = " ".join(result)
             except Exception as e:
                 print(f"Error parsing Image {filename}: {e}")
-        elif filename_lower.endswith('.docx'):
-            try:
-                from docx import Document as DocxDocument
-                doc = DocxDocument(io.BytesIO(file_bytes))
-                text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-            except Exception as e:
-                print(f"Error parsing DOCX {filename}: {e}")
+
         elif filename_lower.endswith('.txt'):
             try:
                 text = file_bytes.decode('utf-8', errors='ignore')
             except Exception:
                 pass
+        elif filename_lower.endswith('.docx'):
+            try:
+                import docx
+                doc = docx.Document(io.BytesIO(file_bytes))
+                text = "\n".join([p.text for p in doc.paragraphs if p.text])
+            except Exception as e:
+                print(f"Error parsing DOCX {filename}: {e}")
         return text
         
     def extract_metadata(text):
@@ -92,7 +93,11 @@ def api_upload():
         phone_match = re.search(r'\+?\d[\d\s-]{8,14}\d', text)
         phone = phone_match.group(0) if phone_match else "Not Found"
         
+
+        # Comprehensive keyword-based skill extraction (from GitHub repo)
+
         # Comprehensive keyword-based skill extraction
+
         skill_keywords = [
             'Python', 'Java', 'C++', 'C#', 'React', 'Node.js', 'SQL', 'MongoDB',
             'AWS', 'Docker', 'Kubernetes', 'Spark', 'Hadoop', 'CSS', 'HTML',
@@ -122,7 +127,11 @@ def api_upload():
         if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower or "m.sc" in text_lower or "m.s." in text_lower:
             edu = "Master's Degree"
             
+
+        # Experience extraction (multi-strategy heuristic from GitHub repo)
+
         # Experience extraction (multi-strategy heuristic)
+
         exp = 0
         
         # Strategy 1: Explicit "X years of experience" or "X+ years experience"
@@ -158,7 +167,9 @@ def api_upload():
                 for start, end in date_ranges:
                     s = int(start)
                     e = 2025 if end in ['present', 'now', 'current'] else int(end)
+
                     # Only consider work-era dates (after 2010) to skip education
+
                     if s >= 2010 and e >= s:
                         all_starts.append(s)
                         all_ends.append(e)
@@ -219,18 +230,25 @@ def api_upload():
 
     if not resumes:
         return jsonify({"error": "No readable text found in uploaded files."}), 400
+
+
+    try:
+        # 1. Process resumes (Spark or Python fallback), generate embeddings, save to Mongo
+        t_start = time.time()
+        chunks_inserted = process_resumes_batch(resumes)
+        spark_time = round(time.time() - t_start, 2)
+
+        # 2. Search for best candidates using JobBERT + Vector Search (scoped to uploaded batch)
+        t_search = time.time()
+        uploaded_ids = [r['resume_id'] for r in resumes]
+        rankings = search_best_candidates(jd_text, top_k=10, resume_ids=uploaded_ids)
+        search_time = round(time.time() - t_search, 2)
+    except Exception as e:
+        print(f"Upload processing error: {e}")
+        return jsonify({"error": f"Processing failed: {str(e)}"}), 500
+
         
-    # 1. Process resumes in parallel with PySpark, generate embeddings, save to Mongo
-    t_start = time.time()
-    chunks_inserted = process_resumes_batch(resumes)
-    spark_time = round(time.time() - t_start, 2)
-    
-    # 2. Search for best candidates using JobBERT + Vector Search
-    #    ONLY within the current batch (not historical data)
-    batch_resume_ids = [r['resume_id'] for r in resumes]
-    t_search = time.time()
-    rankings = search_best_candidates(jd_text, top_k=10, resume_ids=batch_resume_ids)
-    search_time = round(time.time() - t_search, 2)
+
     
     # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
@@ -605,9 +623,28 @@ def api_export():
         headers={'Content-Disposition': 'attachment; filename=HireFlow_Rankings.csv'}
     )
 
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    """Quick health check for frontend and debugging."""
+    mongo_ok = False
+    if client is not None:
+        try:
+            client.admin.command('ping')
+            mongo_ok = True
+        except Exception:
+            mongo_ok = False
+    return jsonify({
+        "status": "ok",
+        "mongodb": mongo_ok,
+        "spark": get_spark() is not None,
+    })
+
 if __name__ == '__main__':
-    # Initialize Spark eagerly so the Spark UI is available at http://localhost:4040
-    get_spark()
+    spark = get_spark()
     port = int(os.environ.get("PORT", 5001))
-    print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
+    if spark:
+        print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
+    else:
+        print(f"[HireFlow] Backend ready. Flask on :{port} (Python mode — no Spark/Java 17)")
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+

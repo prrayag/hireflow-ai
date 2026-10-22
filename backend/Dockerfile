@@ -1,8 +1,8 @@
 FROM python:3.10-slim
 
-# Install Java (required for PySpark) and build tools
+# Install Java (required for PySpark) and system tools
 RUN apt-get update && \
-    apt-get install -y default-jre build-essential && \
+    apt-get install -y default-jre build-essential libgl1 libglib2.0-0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

@@ -81,7 +81,11 @@ function DashboardPage() {
             fetchAnalytics();
         } catch (err) {
             console.error("Upload error:", err);
-            setError(err.response?.data?.error || "Failed to process search. Make sure the backend and MongoDB are running.");
+            if (!err.response) {
+                setError("Cannot reach the backend. Make sure start_windows.bat is running and the backend window shows 'Flask on :5001'.");
+            } else {
+                setError(err.response?.data?.error || "Failed to process search. Check the backend terminal for details.");
+            }
         } finally {
             setLoading(false);
         }

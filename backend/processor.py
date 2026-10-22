@@ -11,20 +11,33 @@ try:
     client.server_info() # force connection check
     db = client["hireflow_db"]
     collection = db["resumes"]
-except:
+
+except Exception as e:
+    print(f"[HireFlow] MongoDB connection warning: {e}. Using in-memory fallback storage.")
+    client = None
     collection = None
 
 mock_db_storage = []
 
 # ─── Spark Session (Singleton with UI Enabled) ────────────────────────────────
 _spark = None
+_spark_available = None  # None = untested, True = OK, False = use Python fallback
 
 def get_spark():
-    """Returns a persistent SparkSession with the Spark UI enabled on port 4040.
-    The UI exposes DAGs, RDDs, stages, and executor metrics at http://localhost:4040
+    """Returns a SparkSession when Java 17+ is available, otherwise None.
+    Spark UI (when available): http://localhost:4040
     """
-    global _spark
-    if _spark is None or _spark._jsc.sc().isStopped():
+    global _spark, _spark_available
+    if _spark_available is False:
+        return None
+    if _spark is not None:
+        try:
+            if not _spark._jsc.sc().isStopped():
+                return _spark
+        except Exception:
+            _spark = None
+
+    try:
         conf = SparkConf() \
             .setAppName("HireFlow_Resume_Pipeline") \
             .setMaster("local[*]") \
@@ -40,12 +53,38 @@ def get_spark():
         _spark = SparkSession.builder \
             .config(conf=conf) \
             .getOrCreate()
-        
-        # Set log level to reduce noise but keep stage/task info
+
         _spark.sparkContext.setLogLevel("WARN")
-        print(f"[HireFlow] Spark UI available at http://localhost:4040")
-    
-    return _spark
+        _spark_available = True
+        print("[HireFlow] Spark UI available at http://localhost:4040")
+        return _spark
+    except Exception as e:
+        _spark_available = False
+        _spark = None
+        print(f"[HireFlow] Spark unavailable: {e}")
+        print("[HireFlow] Running in Python mode (install Java 17 for Spark UI).")
+        return None
+
+def _process_single_resume(resume):
+    """Chunks a single resume into semantic segments."""
+    text = resume.get('text', '')
+    chunks = chunk_text(text, 20)
+
+    processed_data = []
+    for chunk in chunks:
+        processed_data.append({
+            "resume_id": resume.get("resume_id"),
+            "chunk_text": chunk,
+            "metadata": {
+                "name": resume.get("name", "Unknown"),
+                "email": resume.get("email", ""),
+                "phone": resume.get("phone", "Not Found"),
+                "education": resume.get("education", "Not Found"),
+                "skills": resume.get("skills", []),
+                "experience": resume.get("experience", 0)
+            }
+        })
+    return processed_data
 
 def chunk_text(text, chunk_size=20):
     """Splits text into chunks of approximately 20 words for Semantic Chunking."""
@@ -76,49 +115,25 @@ def process_resumes_batch(resumes_data):
     resumes_data: list of dicts with {'resume_id', 'text', 'name', 'email', 'skills', 'experience'}
     """
     spark = get_spark()
-    sc = spark.sparkContext
-    
-    # Set a descriptive job group so it shows up nicely in the Spark UI
-    sc.setJobGroup("resume_ingestion", f"Processing batch of {len(resumes_data)} resumes")
-    
-    # ── Stage 1: Parallelize raw resume data into an RDD ──
-    # The number of partitions scales with batch size for optimal parallelism
-    num_partitions = min(max(4, len(resumes_data) // 10), 32)
-    rdd = sc.parallelize(resumes_data, numSlices=num_partitions)
-    
-    def process_single_resume(resume):
-        """Worker function: chunks a single resume into semantic segments."""
-        text = resume.get('text', '')
-        chunks = chunk_text(text, 20)
-        
-        processed_data = []
-        for chunk in chunks:
-            processed_data.append({
-                "resume_id": resume.get("resume_id"),
-                "chunk_text": chunk,
-                "metadata": {
-                    "name": resume.get("name", "Unknown"),
-                    "email": resume.get("email", ""),
-                    "phone": resume.get("phone", "Not Found"),
-                    "education": resume.get("education", "Not Found"),
-                    "skills": resume.get("skills", []),
-                    "experience": resume.get("experience", 0)
-                }
-            })
-        return processed_data
-    
-    # ── Stage 2: FlatMap transformation (visible as an RDD stage in Spark UI) ──
-    chunks_rdd = rdd.flatMap(process_single_resume)
-    
-    # Cache the RDD so it persists in memory for the Spark UI to inspect
-    chunks_rdd.setName("ResumeChunks")
-    chunks_rdd.cache()
-    
-    # ── Stage 3: Collect to driver ──
-    spark_results = chunks_rdd.collect()
-    
-    print(f"[HireFlow] Spark produced {len(spark_results)} chunks from {len(resumes_data)} resumes "
-          f"across {num_partitions} partitions")
+    spark_results = []
+
+    if spark is not None:
+        sc = spark.sparkContext
+        sc.setJobGroup("resume_ingestion", f"Processing batch of {len(resumes_data)} resumes")
+
+        num_partitions = min(max(4, len(resumes_data) // 10), 32)
+        rdd = sc.parallelize(resumes_data, numSlices=num_partitions)
+        chunks_rdd = rdd.flatMap(_process_single_resume)
+        chunks_rdd.setName("ResumeChunks")
+        chunks_rdd.cache()
+        spark_results = chunks_rdd.collect()
+
+        print(f"[HireFlow] Spark produced {len(spark_results)} chunks from {len(resumes_data)} resumes "
+              f"across {num_partitions} partitions")
+    else:
+        for resume in resumes_data:
+            spark_results.extend(_process_single_resume(resume))
+        print(f"[HireFlow] Python fallback produced {len(spark_results)} chunks from {len(resumes_data)} resumes")
     
     # ── Stage 4: Generate embeddings on the driver node ──
     # (JobBERT model stays on driver to avoid PyTorch serialization issues)
@@ -175,15 +190,22 @@ def search_best_candidates(jd_text, top_k=5, resume_ids=None):
         }
     ]
     
-    try:
-        matches = list(collection.aggregate(pipeline))
-    except Exception as e:
-        print(f"Vector search failed (index might not exist, computing locally): {e}")
+    matches = []
+    if collection is not None:
+        try:
+            matches = list(collection.aggregate(pipeline))
+        except Exception as e:
+            matches = []
+            
+    if not matches:
         # Fallback to local cosine similarity using the AI embeddings
         import numpy as np
         from numpy.linalg import norm
         
-        # If filtering by batch, only fetch those chunks from MongoDB
+
+        # If filtering by batch, only fetch those chunks from MongoDB or mock storage
+
+
         global mock_db_storage
         all_chunks = []
         try:
@@ -263,8 +285,9 @@ def search_best_candidates(jd_text, top_k=5, resume_ids=None):
             })
             if len(unique_candidates) >= top_k:
                 break
-    
+
     # Re-sort by the blended score (experience can change the order)
     unique_candidates = sorted(unique_candidates, key=lambda x: x['ai_score'], reverse=True)
     
     return unique_candidates
+
