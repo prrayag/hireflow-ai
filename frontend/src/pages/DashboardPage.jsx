@@ -9,9 +9,9 @@ const LoadingSpinner = () => {
     const messages = [
         "Booting Apache Spark Cluster...",
         "Running Multimodal OCR Extraction...",
-        "Loading JobBERT Deep Learning Model...",
+        "Loading Neural Retrieval Models...",
         "Converting Text to 384-D Vectors...",
-        "Executing Cosine Similarity Search..."
+        "Reranking Candidates with Cross-Encoder..."
     ];
 
     useEffect(() => {
@@ -308,7 +308,7 @@ function DashboardPage() {
                                         <thead>
                                             <tr style={{ borderBottom: '2px solid var(--border)' }}>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Candidate Name</th>
-                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>JobBERT Match</th>
+                                                <th title="Neural semantic retrieval, reranking, skill coverage and experience fit" style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Neural Match</th>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Experience</th>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Top Skills</th>
                                             </tr>
@@ -371,6 +371,23 @@ function DashboardPage() {
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Background</span>
                                                                         <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Education:</strong> {candidate.education}</p>
                                                                         <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
+                                                                    </div>
+                                                                    <div style={{ flex: '1 1 260px' }}>
+                                                                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>DL Score Breakdown</span>
+                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Semantic retrieval:</strong> {candidate.semantic_score ?? 'N/A'}{candidate.semantic_score != null ? '%' : ''}</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Cross-encoder:</strong> {candidate.reranker_score ?? 'Fallback mode'}{candidate.reranker_score != null ? '%' : ''}</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Skill coverage:</strong> {candidate.skill_coverage ?? 0}%</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.82rem', color: 'var(--ink)', opacity: 0.65 }}>{candidate.inference_mode} · {candidate.model_version}</p>
+                                                                    </div>
+                                                                    <div style={{ flex: '1 1 100%', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                                                                        <p style={{ margin: '0 0 6px', fontSize: '0.9rem', color: '#16a34a' }}><strong>Matched skills:</strong> {(candidate.matched_skills || []).join(', ') || 'None detected'}</p>
+                                                                        <p style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#dc2626' }}><strong>Missing skills:</strong> {(candidate.missing_skills || []).join(', ') || 'None detected'}</p>
+                                                                        <strong style={{ fontSize: '0.9rem', color: 'var(--ink)' }}>Most relevant evidence</strong>
+                                                                        <ul style={{ margin: '6px 0 0', paddingLeft: '20px', color: 'var(--ink)', opacity: 0.82 }}>
+                                                                            {(candidate.relevant_sentences || []).map((sentence, evidenceIdx) => (
+                                                                                <li key={evidenceIdx} style={{ marginBottom: '5px', fontSize: '0.86rem' }}>{sentence}</li>
+                                                                            ))}
+                                                                        </ul>
                                                                     </div>
                                                                 </div>
                                                             </td>

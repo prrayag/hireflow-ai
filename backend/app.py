@@ -20,8 +20,10 @@ import zipfile
 import re
 import time
 import csv
+from datetime import datetime
 from io import StringIO
 from flask import Response
+from dl_pipeline import extract_skills, experience_match, skill_gap
 
 app = Flask(__name__)
 CORS(app)
@@ -98,27 +100,10 @@ def api_upload():
 
         # Comprehensive keyword-based skill extraction
 
-        skill_keywords = [
-            'Python', 'Java', 'C++', 'C#', 'React', 'Node.js', 'SQL', 'MongoDB',
-            'AWS', 'Docker', 'Kubernetes', 'Spark', 'Hadoop', 'CSS', 'HTML',
-            'JavaScript', 'TypeScript', 'Django', 'FastAPI', 'Azure', 'GCP',
-            'Pandas', 'TensorFlow', 'PyTorch', 'Flask', 'Spring Boot', 'Express',
-            'Next.js', 'GraphQL', 'Redis', 'PostgreSQL', 'MySQL', 'Firebase',
-            'Terraform', 'Ansible', 'Jenkins', 'Git', 'Linux', 'Bash',
-            'Kotlin', 'Swift', 'Go', 'Rust', 'Ruby', 'PHP', 'R',
-            'Tableau', 'Power BI', 'Excel', 'Figma', 'Sketch',
-            'Airflow', 'MLflow', 'Kafka', 'RabbitMQ', 'ElasticSearch',
-            'NumPy', 'Matplotlib', 'scikit-learn', 'Hugging Face',
-            'REST APIs', 'Microservices', 'Serverless', 'Lambda',
-            'JIRA', 'Confluence', 'Agile', 'Scrum', 'CI/CD',
-            'Prometheus', 'Grafana', 'Snowflake', 'Looker',
-            'Jetpack Compose', 'Android SDK', 'Material Design'
-        ]
-        found_skills = []
+        # Canonical aliases are shared with JD gap analysis (for example,
+        # k8s -> Kubernetes and sklearn -> scikit-learn).
+        found_skills = extract_skills(text)
         text_lower = text.lower()
-        for skill in skill_keywords:
-            if skill.lower() in text_lower:
-                found_skills.append(skill)
                 
         # Education extraction (heuristic)
         edu = "Not Found"
@@ -166,7 +151,7 @@ def api_upload():
                 all_ends = []
                 for start, end in date_ranges:
                     s = int(start)
-                    e = 2025 if end in ['present', 'now', 'current'] else int(end)
+                    e = datetime.now().year if end in ['present', 'now', 'current'] else int(end)
 
                     # Only consider work-era dates (after 2010) to skip education
 
@@ -181,7 +166,7 @@ def api_upload():
         return {
             "email": email,
             "phone": phone,
-            "skills": found_skills[:10] if found_skills else ["N/A"],
+            "skills": found_skills if found_skills else ["N/A"],
             "education": edu,
             "experience": exp
         }
@@ -257,9 +242,19 @@ def api_upload():
             exp_score = min(30, r.get('experience', 0) * 3)
             edu_bonus = 20 if 'Master' in str(r.get('education', '')) else (15 if 'Bachelor' in str(r.get('education', '')) else 5)
             det_score = max(10, min(100, skill_score + exp_score + edu_bonus))
+            gap = skill_gap(r.get('skills', []), jd_text)
             rankings.append({
                 "name": r.get('name', 'Unknown'),
                 "ai_score": round(det_score, 2),
+                "semantic_score": None,
+                "reranker_score": None,
+                "skill_coverage": gap["skill_coverage"],
+                "experience_match": round(experience_match(r.get('experience', 0), jd_text), 2),
+                "matched_skills": gap["matched_skills"],
+                "missing_skills": gap["missing_skills"],
+                "relevant_sentences": [],
+                "inference_mode": "deterministic-emergency-fallback",
+                "model_version": "none",
                 "experience": r.get('experience', 0),
                 "skills": r.get('skills', []),
                 "email": r.get('email', 'Not Found'),

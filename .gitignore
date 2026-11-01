@@ -9,6 +9,7 @@ backend/extracted/
 
 # python virtual environment
 backend/venv/
+backend/.model_cache/
 venv/
 
 # environment variables

@@ -1,6 +1,6 @@
 # HireFlow AI
 
-AI-powered resume ranking and analytics platform. Upload resumes, score candidates with a hybrid TabTransformer + TF-IDF pipeline, and visualise hiring analytics live from MongoDB.
+AI-powered resume ranking and analytics platform. Upload resumes, retrieve candidates with a Sentence-BERT bi-encoder, rerank them with a cross-encoder neural network, and inspect skill gaps and ranking evidence.
 
 ---
 
@@ -65,14 +65,9 @@ Then open: **http://localhost:5173**
 ```
 HireFlowAI/
 ├── backend/
-│   ├── app.py                  # Flask API server
-│   ├── candidate_scorer.py     # TabTransformer + TF-IDF hybrid scorer
-│   ├── resume_parser.py        # PDF/DOCX/image text extraction
-│   ├── resume_features.py      # Skill extraction, JD matching
-│   ├── json_storage.py         # Saves results to JSON + MongoDB
-│   ├── config.py               # MongoDB connection string
-│   ├── tab_transformer.pth     # Trained model weights
-│   ├── label_encoders.pkl      # Categorical encoders
+│   ├── processor.py            # Neural retrieval + cross-encoder reranking
+│   ├── dl_pipeline.py          # Section chunking, skill gaps, structured signals
+│   ├── app.py                  # API, parsing and analytics
 │   └── requirements.txt        # Python dependencies
 │
 ├── frontend/
@@ -92,14 +87,15 @@ HireFlowAI/
 ## How It Works
 
 1. **Upload** — Drop PDF/DOCX/image resumes (single files or ZIP)
-2. **Parse** — Text is extracted using pdfplumber + easyOCR (fallback for scanned PDFs)
-3. **Score** — 3-component hybrid score out of 100:
-   - `TabTransformer (0–40)` — neural network on structured fields (experience, skills count, dept)
-   - `Vector Similarity (0–35)` — candidate vs JD embedding cosine similarity
-   - `TF-IDF Match (0–25)` — text overlap between resume and job description
-4. **Store** — Results saved to local JSON and pushed to **MongoDB Atlas**
-5. **Rank** — Candidates sorted by total score on the Dashboard
-6. **Analyse** — Analytics page reads live from MongoDB (241+ candidates)
+2. **Parse** — Text is extracted with PyMuPDF, python-docx, or EasyOCR
+3. **Retrieve** — Sentence-BERT embeds section-aware chunks and the JD
+4. **Rerank** — a cross-encoder jointly reads the JD and strongest resume evidence
+5. **Explain** — the API returns semantic, reranker, skill-coverage and experience signals
+6. **Store** — chunk vectors are pushed to MongoDB or retained in memory as a fallback
+7. **Rank** — candidates are sorted by the transparent blended neural score
+
+The models are downloaded into `backend/.model_cache/` on first use. Set
+`ENABLE_CROSS_ENCODER=false` to run only the faster bi-encoder stage.
 
 ---
 
