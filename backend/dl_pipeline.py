@@ -94,6 +94,31 @@ def sentence_chunks(text: str, max_words: int = 90) -> list[dict[str, str]]:
     return chunks
 
 
+def process_resume_record(resume: dict) -> list[dict]:
+    """Convert one resume into serializable records for local or Spark execution.
+
+    This function lives in the dependency-light preprocessing module so Spark
+    workers do not need to import the Flask/Mongo/model-serving module.
+    """
+    records = []
+    for index, chunk in enumerate(sentence_chunks(resume.get("text", ""))):
+        records.append({
+            "resume_id": resume.get("resume_id"),
+            "chunk_index": index,
+            "section": chunk["section"],
+            "chunk_text": chunk["text"],
+            "metadata": {
+                "name": resume.get("name", "Unknown"),
+                "email": resume.get("email", ""),
+                "phone": resume.get("phone", "Not Found"),
+                "education": resume.get("education", "Not Found"),
+                "skills": resume.get("skills", []),
+                "experience": resume.get("experience", 0),
+            },
+        })
+    return records
+
+
 def skill_gap(resume_skills: list[str], jd_text: str) -> dict[str, object]:
     jd_skills = extract_skills(jd_text)
     candidate = set(resume_skills)

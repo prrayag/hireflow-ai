@@ -10,7 +10,7 @@ from pymongo import MongoClient
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
-from dl_pipeline import experience_match, sentence_chunks, skill_gap
+from dl_pipeline import experience_match, process_resume_record, sentence_chunks, skill_gap
 
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ.setdefault("HF_HOME", os.path.join(os.path.dirname(__file__), ".model_cache"))
@@ -67,19 +67,7 @@ def get_spark():
 
 
 def _process_single_resume(resume: dict) -> list[dict]:
-    output = []
-    for index, chunk in enumerate(sentence_chunks(resume.get("text", ""))):
-        output.append({
-            "resume_id": resume.get("resume_id"), "chunk_index": index,
-            "section": chunk["section"], "chunk_text": chunk["text"],
-            "metadata": {
-                "name": resume.get("name", "Unknown"), "email": resume.get("email", ""),
-                "phone": resume.get("phone", "Not Found"),
-                "education": resume.get("education", "Not Found"),
-                "skills": resume.get("skills", []), "experience": resume.get("experience", 0),
-            },
-        })
-    return output
+    return process_resume_record(resume)
 
 
 def chunk_text(text: str, chunk_size: int = 90) -> list[str]:
@@ -130,10 +118,20 @@ def process_resumes_batch(resumes_data: list[dict]) -> int:
     """Create section-aware chunks, batch-embed them, and persist their vectors."""
     spark = get_spark()
     if spark is not None and len(resumes_data) >= 8:
-        partitions = min(max(2, len(resumes_data) // 10), 16)
-        chunks = spark.sparkContext.parallelize(resumes_data, partitions).flatMap(_process_single_resume).collect()
+        try:
+            partitions = min(max(2, len(resumes_data) // 10), 16)
+            # Spark workers start with their own sys.path. Ship the pure
+            # preprocessing module explicitly so functions can be unpickled.
+            spark.sparkContext.addPyFile(os.path.join(os.path.dirname(__file__), "dl_pipeline.py"))
+            chunks = (spark.sparkContext.parallelize(resumes_data, partitions)
+                      .flatMap(process_resume_record).collect())
+            print(f"[HireFlow] Spark produced {len(chunks)} chunks across {partitions} partitions")
+        except Exception as exc:
+            # Ranking must remain available even when Java/Spark is unhealthy.
+            print(f"[HireFlow] Spark batch failed; using local preprocessing: {exc}")
+            chunks = [chunk for resume in resumes_data for chunk in process_resume_record(resume)]
     else:
-        chunks = [chunk for resume in resumes_data for chunk in _process_single_resume(resume)]
+        chunks = [chunk for resume in resumes_data for chunk in process_resume_record(resume)]
     if not chunks:
         return 0
 

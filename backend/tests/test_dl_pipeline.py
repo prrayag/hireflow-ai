@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dl_pipeline import experience_match, extract_skills, sentence_chunks, skill_gap
+from dl_pipeline import experience_match, extract_skills, process_resume_record, sentence_chunks, skill_gap
 
 
 class DLPipelineTests(unittest.TestCase):
@@ -28,6 +28,16 @@ class DLPipelineTests(unittest.TestCase):
     def test_experience_is_relative_to_jd(self):
         self.assertEqual(experience_match(3, "Requires 5+ years experience"), 60.0)
         self.assertEqual(experience_match(8, "Requires 5 years experience"), 100.0)
+
+    def test_spark_safe_resume_record(self):
+        records = process_resume_record({
+            "resume_id": "r-1", "name": "Test Candidate",
+            "text": "SUMMARY\nPython engineer.\nSKILLS\nPython and AWS.",
+            "skills": ["Python", "AWS"], "experience": 3,
+        })
+        self.assertEqual(records[0]["resume_id"], "r-1")
+        self.assertEqual(records[0]["metadata"]["name"], "Test Candidate")
+        self.assertNotIn("embedding", records[0])
 
 
 if __name__ == "__main__":
