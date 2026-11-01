@@ -1,0 +1,15 @@
+Flask
+flask-cors
+pymongo[srv]
+sentence-transformers
+pyspark
+matplotlib
+seaborn
+werkzeug
+numpy
+pandas
+PyMuPDF
+easyocr
+Pillow
+python-docx
+reportlab

@@ -1,0 +1,8 @@
+Riya Kulkarni
+riya.k@example.com | +91 98765 43210 | Pune
+Backend developer who builds scalable APIs and cloud services for fintech products.
+Led migration of a monolith to microservices, cutting deployment time by 40 percent.
+Mentored three junior engineers and ran weekly design reviews for the platform team.
+4 years of experience. B.Tech Computer Science.
+Skills: nodejs, postgres, ReactJS, Python, Flask, Azure, docker compose, Communication, Teamwork
+Hobbies: cricket, photography, travel
