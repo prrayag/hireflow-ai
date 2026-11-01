@@ -1,0 +1,19 @@
+{
+  "embedding_dim": 32,
+  "num_heads": 4,
+  "num_layers": 2,
+  "num_cat_features": 2,
+  "num_num_features": 2,
+  "cat_vocab_sizes": [
+    5,
+    28
+  ],
+  "cat_cols": [
+    "Department",
+    "JobRole"
+  ],
+  "num_cols": [
+    "Experience_Years",
+    "skills_count"
+  ]
+}
