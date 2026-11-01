@@ -16,9 +16,14 @@ os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ.setdefault("HF_HOME", os.path.join(os.path.dirname(__file__), ".model_cache"))
 
 BI_ENCODER_MODEL = os.getenv("BI_ENCODER_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-CROSS_ENCODER_MODEL = os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+LOCAL_CROSS_ENCODER = os.path.join(os.path.dirname(__file__), "model_artifacts", "cross_encoder_v1")
+CROSS_ENCODER_MODEL = os.getenv(
+    "CROSS_ENCODER_MODEL",
+    LOCAL_CROSS_ENCODER if os.path.isdir(LOCAL_CROSS_ENCODER)
+    else "cross-encoder/ms-marco-MiniLM-L-6-v2",
+)
 ENABLE_CROSS_ENCODER = os.getenv("ENABLE_CROSS_ENCODER", "true").lower() in {"1", "true", "yes"}
-MODEL_VERSION = "hireflow-neural-ranker-v1"
+MODEL_VERSION = "hireflow-weakly-supervised-ranker-v1" if os.path.isdir(LOCAL_CROSS_ENCODER) else "hireflow-neural-ranker-v1"
 
 
 def _is_model_cached(model_name: str) -> bool:
@@ -196,8 +201,10 @@ def search_best_candidates(jd_text: str, top_k: int = 5, resume_ids=None) -> lis
     cross_encoder = _get_cross_encoder()
     if cross_encoder and candidates:
         try:
+            import torch
             logits = np.asarray(cross_encoder.predict(
-                [(jd_text, c["reranker_text"]) for c in candidates], show_progress_bar=False
+                [(jd_text, c["reranker_text"]) for c in candidates], show_progress_bar=False,
+                activation_fn=torch.nn.Identity(),
             ), dtype=float).reshape(-1)
             probabilities = 1.0 / (1.0 + np.exp(-np.clip(logits, -30, 30)))
             for candidate, probability in zip(candidates, probabilities):

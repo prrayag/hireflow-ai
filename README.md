@@ -97,6 +97,10 @@ HireFlowAI/
 The models are downloaded into `backend/.model_cache/` on first use. Set
 `ENABLE_CROSS_ENCODER=false` to run only the faster bi-encoder stage.
 
+The reproducible weak-supervision training pipeline is under `backend/training/`.
+If `backend/model_artifacts/cross_encoder_v1/` exists, the backend uses that
+fine-tuned checkpoint; otherwise it safely uses the pretrained cross-encoder.
+
 ---
 
 ## API Endpoints

@@ -1,0 +1,35 @@
+{
+  "warning": "Labels are synthetic skill-overlap labels, not human judgements.",
+  "test_pairs": 75,
+  "test_resumes": 15,
+  "job_descriptions": 5,
+  "metrics": {
+    "skill_baseline": {
+      "precision_at_3": 1.0,
+      "recall_at_5": 0.9,
+      "ndcg_at_5": 1.0,
+      "mrr": 1.0
+    },
+    "bi_encoder": {
+      "precision_at_3": 0.6667,
+      "recall_at_5": 0.6067,
+      "ndcg_at_5": 0.771,
+      "mrr": 1.0,
+      "latency_seconds": 0.6208
+    },
+    "pretrained_cross_encoder": {
+      "precision_at_3": 0.8667,
+      "recall_at_5": 0.7533,
+      "ndcg_at_5": 0.8818,
+      "mrr": 1.0,
+      "spearman_with_weak_labels": 0.6565,
+      "latency_seconds": 0.5972
+    }
+  },
+  "fairness": {
+    "pretrained_cross_encoder": {
+      "mean_name_mask_delta_points": 1.5401,
+      "max_name_mask_delta_points": 7.0905
+    }
+  }
+}
