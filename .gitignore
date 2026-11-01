@@ -10,7 +10,6 @@ backend/extracted/
 # python virtual environment
 backend/venv/
 backend/.model_cache/
-backend/model_artifacts/
 venv/
 
 # environment variables
