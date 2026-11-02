@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { filterRankings } from '../utils/rankingFilters';
 import '../styles/landing.css'; 
+import '../styles/ranking-controls.css';
 
 const LoadingSpinner = () => {
     const [msgIndex, setMsgIndex] = useState(0);
@@ -51,6 +53,30 @@ function DashboardPage() {
     const [files, setFiles] = useState(null);
     const [expandedRow, setExpandedRow] = useState(null);
     const [timing, setTiming] = useState(null);
+    const [skippedFiles, setSkippedFiles] = useState([]);
+    const [query, setQuery] = useState('');
+    const [minScore, setMinScore] = useState('');
+    const [minExperience, setMinExperience] = useState('');
+    const [skill, setSkill] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const filteredRankings = useMemo(() => filterRankings(rankings, { query, minScore, minExperience, skill }),
+        [rankings, query, minScore, minExperience, skill]);
+    const availableSkills = useMemo(() => [...new Set(rankings.flatMap(c => c.skills || []))]
+        .filter(s => s !== 'N/A').sort(), [rankings]);
+    const totalPages = Math.max(1, Math.ceil(filteredRankings.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const pageStart = (currentPage - 1) * pageSize;
+    const visibleRankings = filteredRankings.slice(pageStart, pageStart + pageSize);
+
+    useEffect(() => {
+        setPage(1);
+        setExpandedRow(null);
+    }, [rankings, query, minScore, minExperience, skill, pageSize]);
+
+    const resetFilters = () => {
+        setQuery(''); setMinScore(''); setMinExperience(''); setSkill('');
+    };
 
     const handleUpload = async () => {
         if (!jdText.trim()) {
@@ -60,6 +86,7 @@ function DashboardPage() {
         setLoading(true);
         setError(null);
         setTiming(null);
+        setSkippedFiles([]);
         
         try {
             const formData = new FormData();
@@ -75,11 +102,14 @@ function DashboardPage() {
             });
             
             setRankings(response.data.rankings);
+            setSkippedFiles(response.data.skipped_files || []);
+            resetFilters();
             if (response.data.timing) {
                 setTiming(response.data.timing);
             }
             fetchAnalytics();
         } catch (err) {
+            setSkippedFiles(err.response?.data?.skipped_files || []);
             console.error("Upload error:", err);
             if (!err.response) {
                 setError("Cannot reach the backend. Make sure start_windows.bat is running and the backend window shows 'Flask on :5001'.");
@@ -103,21 +133,21 @@ function DashboardPage() {
     const handleExportCSV = () => {
         // Build CSV entirely client-side — no backend call needed
         const headers = ['Rank', 'Candidate Name', 'AI Match Score (%)', 'Email', 'Phone', 'Education', 'Years of Experience', 'Skills'];
-        const rows = rankings.map((c, i) => [
+        const rows = filteredRankings.map((c, i) => [
             i + 1,
             c.name || 'Unknown',
-            c.ai_score || 'N/A',
+            c.ai_score ?? 'N/A',
             c.email || 'Not Found',
             c.phone || 'Not Found',
             c.education || 'Not Found',
-            c.experience || 'N/A',
+            c.experience ?? 'N/A',
             (c.skills || []).join(', ')
         ]);
         
         // Escape fields that might contain commas
         const escape = (val) => {
             const str = String(val);
-            return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+            return /[,"\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
         };
         
         const csvContent = [
@@ -250,17 +280,25 @@ function DashboardPage() {
                             </div>
                         )}
 
+                        {skippedFiles.length > 0 && (
+                            <div role="status" className="ranking-warning">
+                                <strong>{skippedFiles.length} file(s) could not be processed.</strong>
+                                <ul>{skippedFiles.map((file, index) => <li key={index}>{file.filename}: {file.reason}</li>)}</ul>
+                            </div>
+                        )}
+
                         {/* Rankings Results */}
                         {rankings.length > 0 && (
                             <div className="ui-mockup" style={{ padding: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', animation: 'fadeIn 0.6s ease-out' }}>
                                 
                                 {/* Top bar with title + action buttons */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-                                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', margin: 0 }}>Top Candidates</h2>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', margin: 0 }}>Ranked Candidates ({rankings.length})</h2>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                         {/* Export CSV Button */}
                                         <button 
                                             onClick={handleExportCSV}
+                                            disabled={filteredRankings.length === 0}
                                             style={{
                                                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                                                 padding: '10px 20px', borderRadius: '10px',
@@ -277,7 +315,7 @@ function DashboardPage() {
                                                 <polyline points="7 10 12 15 17 10"/>
                                                 <line x1="12" y1="15" x2="12" y2="3"/>
                                             </svg>
-                                            Export CSV
+                                            Export filtered CSV ({filteredRankings.length})
                                         </button>
                                         {/* Spark UI Button */}
                                         <a 
@@ -303,6 +341,25 @@ function DashboardPage() {
                                     </div>
                                 </div>
 
+                                <div className="ranking-filters">
+                                    <label>Search candidates
+                                        <input type="search" placeholder="Name, email or skill" value={query} onChange={e => setQuery(e.target.value)} />
+                                    </label>
+                                    <label>Minimum match (%)
+                                        <input type="number" min="0" max="100" placeholder="Any" value={minScore} onChange={e => setMinScore(e.target.value)} />
+                                    </label>
+                                    <label>Minimum experience (years)
+                                        <input type="number" min="0" placeholder="Any" value={minExperience} onChange={e => setMinExperience(e.target.value)} />
+                                    </label>
+                                    <label>Skill
+                                        <select value={skill} onChange={e => setSkill(e.target.value)}>
+                                            <option value="">All skills</option>
+                                            {availableSkills.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </label>
+                                    <button type="button" onClick={resetFilters}>Clear filters</button>
+                                </div>
+                                <p role="status" className="ranking-count">{filteredRankings.length} of {rankings.length} candidates match your filters.</p>
                                 <div style={{ overflowX: 'auto' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
                                         <thead>
@@ -314,8 +371,8 @@ function DashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {rankings.map((candidate, idx) => (
-                                                <React.Fragment key={idx}>
+                                            {visibleRankings.map((candidate, idx) => (
+                                                <React.Fragment key={candidate.resume_id || `${pageStart}-${idx}`}>
                                                     <tr 
                                                         onClick={() => setExpandedRow(expandedRow === idx ? null : idx)}
                                                         style={{ 
@@ -395,8 +452,22 @@ function DashboardPage() {
                                                     )}
                                                 </React.Fragment>
                                             ))}
+                                            {visibleRankings.length === 0 && (
+                                                <tr><td colSpan="4" style={{ padding: '32px' }}>No candidates match these filters. Try lowering the minimum score or clearing filters.</td></tr>
+                                            )}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="ranking-pagination">
+                                    <span>Showing {filteredRankings.length ? pageStart + 1 : 0}–{Math.min(pageStart + pageSize, filteredRankings.length)} of {filteredRankings.length}</span>
+                                    <label>Rows per page
+                                        <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                                            {[10, 25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                                        </select>
+                                    </label>
+                                    <button type="button" disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); setExpandedRow(null); }}>Previous</button>
+                                    <span>Page {currentPage} of {totalPages}</span>
+                                    <button type="button" disabled={currentPage === totalPages} onClick={() => { setPage(currentPage + 1); setExpandedRow(null); }}>Next</button>
                                 </div>
                             </div>
                         )}
