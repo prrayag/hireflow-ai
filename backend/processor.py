@@ -11,6 +11,7 @@ from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
 from dl_pipeline import experience_match, process_resume_record, sentence_chunks, skill_gap
+from ner_parser import jd_skills
 
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ.setdefault("HF_HOME", os.path.join(os.path.dirname(__file__), ".model_cache"))
@@ -212,10 +213,11 @@ def search_best_candidates(jd_text: str, top_k: int = 5, resume_ids=None) -> lis
         except Exception as exc:
             print(f"[HireFlow] Cross-encoder inference failed: {exc}")
 
+    required_skills = jd_skills(jd_text)
     results = []
     for candidate in candidates:
         meta = candidate["metadata"]
-        gap = skill_gap(meta.get("skills", []), jd_text)
+        gap = skill_gap(meta.get("skills", []), jd_text, jd_skills=required_skills)
         exp_score = experience_match(meta.get("experience", 0), jd_text)
         reranker = candidate.get("reranker_score")
         if reranker is None:
@@ -234,7 +236,10 @@ def search_best_candidates(jd_text: str, top_k: int = 5, resume_ids=None) -> lis
             "matched_skills": gap["matched_skills"], "missing_skills": gap["missing_skills"],
             "relevant_sentences": candidate["evidence"], "inference_mode": inference_mode,
             "model_version": MODEL_VERSION, "experience": meta.get("experience", 0),
-            "skills": meta.get("skills", []), "email": meta.get("email", "Not Found"),
+            "skills": meta.get("skills", []), "ner_only_skills": meta.get("ner_only_skills", []),
+            "soft_skills": meta.get("soft_skills", []),
+            "skill_parser": meta.get("skill_parser", "dictionary"),
+            "email": meta.get("email", "Not Found"),
             "phone": meta.get("phone", "Not Found"), "education": meta.get("education", "Not Found"),
         })
     return sorted(results, key=lambda item: item["ai_score"], reverse=True)[:top_k]

@@ -647,3 +647,84 @@ An accurate description is:
 The next research step is to collect independent labels from multiple human
 reviewers, measure reviewer agreement, retrain on those labels, and compare the
 human-trained model against all current baselines.
+
+---
+
+## 13. Added: NER skill extraction and human ranking benchmark
+
+### 13.1 Why
+
+Every score in the ranking pipeline depends on the resume parser. Skills came
+from a fixed keyword dictionary (about 50 skills), and experience came from
+regex patterns that returned 0 years for ranges such as "Mar 2019 – Feb 2022".
+A neural parser fixes the weakest stage before the neural ranker, and unlike the
+cross-encoder it can be trained and tested on **human-annotated** data.
+
+### 13.2 What was built
+
+| Component | File | Description |
+|---|---|---|
+| Training data | `backend/training/ner_data.py` | SkillSpan (Zhang et al., NAACL 2022, CC BY 4.0): 11,543 human-annotated sentences from 263 English job postings, official train/dev/test split by document. Two BIO layers merged into `TECH` (knowledge: tools, languages, frameworks) and `SOFT` (skills: abilities). |
+| Model 1 | `backend/ner_models.py`, `train_ner_bilstm_crf.py` | **BiLSTM-CRF written from scratch in PyTorch**: word embeddings + character CNN → BiLSTM (128 per direction) → linear emissions → CRF. The CRF loss uses the forward algorithm for the partition function and decoding uses Viterbi; both are unit-tested against brute force over every tag sequence. 1.1 M parameters, Adam, 30 epochs, best epoch chosen on dev F1. |
+| Model 2 | `train_ner_transformer.py` | **DistilBERT (`distilbert-base-cased`) fine-tuned for token classification**: first sub-word labelling, AdamW with linear warm-up/decay, best epoch chosen on dev F1. |
+| Runtime parser | `backend/ner_parser.py`, `backend/resume_parser.py` | Uses DistilBERT if its weights exist, else the BiLSTM-CRF, else the dictionary. Model skills are canonicalised (`k8s` → Kubernetes) and **added** to dictionary matches; inference errors fall back to the dictionary, so uploads never fail. The JD is parsed the same way, so `skill_gap` sees skills like Snowflake or dbt. |
+| Experience fix | `dl_pipeline.experience_from_date_ranges` | Month/year ranges (`Jan 2019 - Mar 2022`, `06/2019 – Present`, `2018-Present`), overlap merging, education section ignored. The original regex strategies still run first. |
+| Human benchmark | `backend/training/human_benchmark.py` | Labelling sheet for 10 resumes × 3 JDs, guide, and an evaluator for agreement and ranking metrics (see 13.4). |
+| UI | `LandingPage.jsx`, `DashboardPage.jsx` | "JobBERT" claim replaced with an accurate description; the candidate panel shows skills found only by the NER model, soft skills and which parser ran. |
+
+### 13.3 Results (`backend/training/results/ner_evaluation.md`)
+
+SkillSpan **test** split: 3,569 human-labelled sentences from 65 postings, never
+used for training or model selection. Exact-span entity scores:
+
+| System | TECH P | TECH R | TECH F1 | SOFT F1 | Micro F1 | Recall on skills not in the dictionary |
+|---|---:|---:|---:|---:|---:|---:|
+| Keyword dictionary (previous parser) | 0.620 | 0.171 | 0.268 | 0.000 | 0.155 | 0.000 |
+| BiLSTM-CRF (from scratch) | 0.520 | 0.468 | 0.492 | 0.272 | 0.390 | 0.407 |
+| DistilBERT (fine-tuned) | 0.565 | 0.602 | **0.583** | **0.421** | **0.505** | **0.559** |
+
+- Both neural models more than double the dictionary's TECH F1. Most of the
+  gain is recall: the dictionary cannot find skills it was never given.
+- Transfer learning matters: DistilBERT beats the from-scratch BiLSTM-CRF by
+  0.09 TECH F1 after 3 epochs, while the BiLSTM-CRF needed 30 epochs and was
+  still improving (`results/ner_learning_curves.png`).
+- DistilBERT is ~7× slower per sentence (5.7 ms vs 0.8 ms on CPU), which is
+  still well under a second for a resume.
+
+On the project's 100 generated resumes (set-level, generator skill lists as
+ground truth), the hybrid parser raises recall from 0.768 to 0.933 and F1 from
+0.850 to 0.936, with precision almost unchanged (0.951 → 0.939). These resumes
+were used for error analysis while designing the runtime span filters (skip the
+education section, keep the leading dot in ".NET", drop vague phrases such as
+"modern web technologies"), so treat this as a sanity check, not a blind test.
+Before those filters the hybrid scored 0.693 precision / 0.787 F1.
+
+### 13.4 Human ranking benchmark (to complete)
+
+`backend/training/human_benchmark/labels.csv` lists 30 resume–JD pairs. Two team
+members score each pair 0–3 independently using `GUIDE.md`, then:
+
+```bash
+backend/venv/bin/python backend/training/human_benchmark.py evaluate
+```
+
+This reports quadratic-weighted Cohen's kappa between annotators, then
+Precision@3, Recall@5, NDCG@5, MRR and Spearman correlation against the human
+scores for the full system, bi-encoder only, cross-encoder only and skill
+coverage only. It runs the full ranking twice, with NER skills and with
+dictionary skills, so the effect of the new parser on ranking quality is
+measured directly. **No numbers are reported yet because the human labels have
+not been collected.**
+
+### 13.5 Limitations
+
+- SkillSpan is job postings, not resumes. The domain is close (the same skill
+  vocabulary), but resume-specific accuracy needs hand-labelled resumes.
+- The models label skills only. Names, degrees and companies still come from
+  the rule-based parser; experience uses the improved date parser, not NER.
+- DistilBERT training stopped during epoch 5 when the machine ran out of disk;
+  the saved checkpoint is the best dev epoch (3), and epoch 4 had already
+  dropped, so the run had effectively converged.
+- The fine-tuned DistilBERT weights (~260 MB) exceed GitHub's 100 MB file limit
+  and are git-ignored; retrain with the script, or share them via Git LFS or
+  the Hugging Face Hub. Without them the app uses the BiLSTM-CRF automatically.

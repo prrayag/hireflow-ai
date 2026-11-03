@@ -1,0 +1,245 @@
+{
+  "model": "BiLSTM-CRF (word embeddings + char CNN), trained from scratch",
+  "dataset": "SkillSpan (Zhang et al., NAACL 2022), CC BY 4.0 - human-annotated job postings",
+  "train_sentences": 4800,
+  "dev_sentences": 3174,
+  "labels": [
+    "O",
+    "B-TECH",
+    "I-TECH",
+    "B-SOFT",
+    "I-SOFT"
+  ],
+  "hyperparameters": {
+    "word_dim": 100,
+    "char_dim": 30,
+    "char_filters": 50,
+    "hidden_dim": 128,
+    "dropout": 0.5,
+    "lr": 0.001,
+    "batch_size": 32,
+    "optimizer": "Adam",
+    "grad_clip": 5.0,
+    "seed": 42
+  },
+  "best_epoch": {
+    "epoch": 30,
+    "train_loss": 1.6773,
+    "dev_micro_f1": 0.4197,
+    "dev_tech_f1": 0.4733,
+    "dev_soft_f1": 0.3605
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 12.1426,
+      "dev_micro_f1": 0.0061,
+      "dev_tech_f1": 0.0,
+      "dev_soft_f1": 0.0117
+    },
+    {
+      "epoch": 2,
+      "train_loss": 8.8415,
+      "dev_micro_f1": 0.0528,
+      "dev_tech_f1": 0.0418,
+      "dev_soft_f1": 0.0624
+    },
+    {
+      "epoch": 3,
+      "train_loss": 7.3172,
+      "dev_micro_f1": 0.158,
+      "dev_tech_f1": 0.1926,
+      "dev_soft_f1": 0.1229
+    },
+    {
+      "epoch": 4,
+      "train_loss": 6.3314,
+      "dev_micro_f1": 0.2444,
+      "dev_tech_f1": 0.296,
+      "dev_soft_f1": 0.186
+    },
+    {
+      "epoch": 5,
+      "train_loss": 5.5678,
+      "dev_micro_f1": 0.2654,
+      "dev_tech_f1": 0.3244,
+      "dev_soft_f1": 0.1946
+    },
+    {
+      "epoch": 6,
+      "train_loss": 4.9615,
+      "dev_micro_f1": 0.2475,
+      "dev_tech_f1": 0.2926,
+      "dev_soft_f1": 0.2006
+    },
+    {
+      "epoch": 7,
+      "train_loss": 4.4529,
+      "dev_micro_f1": 0.2961,
+      "dev_tech_f1": 0.3495,
+      "dev_soft_f1": 0.2354
+    },
+    {
+      "epoch": 8,
+      "train_loss": 4.1273,
+      "dev_micro_f1": 0.3235,
+      "dev_tech_f1": 0.3751,
+      "dev_soft_f1": 0.2637
+    },
+    {
+      "epoch": 9,
+      "train_loss": 3.8329,
+      "dev_micro_f1": 0.3263,
+      "dev_tech_f1": 0.3888,
+      "dev_soft_f1": 0.2497
+    },
+    {
+      "epoch": 10,
+      "train_loss": 3.5982,
+      "dev_micro_f1": 0.3404,
+      "dev_tech_f1": 0.3925,
+      "dev_soft_f1": 0.2693
+    },
+    {
+      "epoch": 11,
+      "train_loss": 3.3578,
+      "dev_micro_f1": 0.3376,
+      "dev_tech_f1": 0.3787,
+      "dev_soft_f1": 0.2852
+    },
+    {
+      "epoch": 12,
+      "train_loss": 3.198,
+      "dev_micro_f1": 0.3436,
+      "dev_tech_f1": 0.3869,
+      "dev_soft_f1": 0.2887
+    },
+    {
+      "epoch": 13,
+      "train_loss": 2.9639,
+      "dev_micro_f1": 0.3524,
+      "dev_tech_f1": 0.406,
+      "dev_soft_f1": 0.2822
+    },
+    {
+      "epoch": 14,
+      "train_loss": 2.8643,
+      "dev_micro_f1": 0.3477,
+      "dev_tech_f1": 0.3987,
+      "dev_soft_f1": 0.2868
+    },
+    {
+      "epoch": 15,
+      "train_loss": 2.7906,
+      "dev_micro_f1": 0.3652,
+      "dev_tech_f1": 0.4256,
+      "dev_soft_f1": 0.2926
+    },
+    {
+      "epoch": 16,
+      "train_loss": 2.6332,
+      "dev_micro_f1": 0.3652,
+      "dev_tech_f1": 0.4009,
+      "dev_soft_f1": 0.3187
+    },
+    {
+      "epoch": 17,
+      "train_loss": 2.4786,
+      "dev_micro_f1": 0.3731,
+      "dev_tech_f1": 0.4264,
+      "dev_soft_f1": 0.3063
+    },
+    {
+      "epoch": 18,
+      "train_loss": 2.4199,
+      "dev_micro_f1": 0.3794,
+      "dev_tech_f1": 0.4165,
+      "dev_soft_f1": 0.3315
+    },
+    {
+      "epoch": 19,
+      "train_loss": 2.3123,
+      "dev_micro_f1": 0.377,
+      "dev_tech_f1": 0.4145,
+      "dev_soft_f1": 0.3317
+    },
+    {
+      "epoch": 20,
+      "train_loss": 2.2654,
+      "dev_micro_f1": 0.391,
+      "dev_tech_f1": 0.4368,
+      "dev_soft_f1": 0.3341
+    },
+    {
+      "epoch": 21,
+      "train_loss": 2.198,
+      "dev_micro_f1": 0.407,
+      "dev_tech_f1": 0.4406,
+      "dev_soft_f1": 0.3661
+    },
+    {
+      "epoch": 22,
+      "train_loss": 2.094,
+      "dev_micro_f1": 0.3974,
+      "dev_tech_f1": 0.4346,
+      "dev_soft_f1": 0.352
+    },
+    {
+      "epoch": 23,
+      "train_loss": 2.0387,
+      "dev_micro_f1": 0.4004,
+      "dev_tech_f1": 0.437,
+      "dev_soft_f1": 0.3563
+    },
+    {
+      "epoch": 24,
+      "train_loss": 1.979,
+      "dev_micro_f1": 0.4048,
+      "dev_tech_f1": 0.4383,
+      "dev_soft_f1": 0.3632
+    },
+    {
+      "epoch": 25,
+      "train_loss": 1.934,
+      "dev_micro_f1": 0.398,
+      "dev_tech_f1": 0.4328,
+      "dev_soft_f1": 0.3557
+    },
+    {
+      "epoch": 26,
+      "train_loss": 1.8748,
+      "dev_micro_f1": 0.4114,
+      "dev_tech_f1": 0.445,
+      "dev_soft_f1": 0.3719
+    },
+    {
+      "epoch": 27,
+      "train_loss": 1.818,
+      "dev_micro_f1": 0.4104,
+      "dev_tech_f1": 0.4514,
+      "dev_soft_f1": 0.3619
+    },
+    {
+      "epoch": 28,
+      "train_loss": 1.7935,
+      "dev_micro_f1": 0.4087,
+      "dev_tech_f1": 0.4552,
+      "dev_soft_f1": 0.3532
+    },
+    {
+      "epoch": 29,
+      "train_loss": 1.7407,
+      "dev_micro_f1": 0.4138,
+      "dev_tech_f1": 0.4478,
+      "dev_soft_f1": 0.3716
+    },
+    {
+      "epoch": 30,
+      "train_loss": 1.6773,
+      "dev_micro_f1": 0.4197,
+      "dev_tech_f1": 0.4733,
+      "dev_soft_f1": 0.3605
+    }
+  ],
+  "training_seconds": 2002.3
+}

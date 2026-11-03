@@ -1,0 +1,51 @@
+{
+  "source": "100_resumes.zip",
+  "seed": 7,
+  "resumes": [
+    {
+      "resume_id": "charles_jackson_99",
+      "resume_file": "charles_jackson_99.docx"
+    },
+    {
+      "resume_id": "charles_williams_97",
+      "resume_file": "charles_williams_97.docx"
+    },
+    {
+      "resume_id": "james_garcia_14",
+      "resume_file": "james_garcia_14.docx"
+    },
+    {
+      "resume_id": "jennifer_jackson_39",
+      "resume_file": "jennifer_jackson_39.docx"
+    },
+    {
+      "resume_id": "joseph_martin_2",
+      "resume_file": "joseph_martin_2.docx"
+    },
+    {
+      "resume_id": "karen_martin_80",
+      "resume_file": "karen_martin_80.docx"
+    },
+    {
+      "resume_id": "karen_rodriguez_69",
+      "resume_file": "karen_rodriguez_69.docx"
+    },
+    {
+      "resume_id": "robert_hernandez_45",
+      "resume_file": "robert_hernandez_45.docx"
+    },
+    {
+      "resume_id": "sarah_garcia_44",
+      "resume_file": "sarah_garcia_44.docx"
+    },
+    {
+      "resume_id": "thomas_gonzalez_85",
+      "resume_file": "thomas_gonzalez_85.docx"
+    }
+  ],
+  "jd_ids": [
+    "backend_python",
+    "frontend",
+    "devops"
+  ]
+}

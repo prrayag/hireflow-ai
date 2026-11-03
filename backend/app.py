@@ -24,6 +24,8 @@ from datetime import datetime
 from io import StringIO
 from flask import Response
 from dl_pipeline import extract_skills, experience_match, skill_gap
+from ner_parser import jd_skills as extract_jd_skills
+from resume_parser import extract_metadata, process_file_content
 
 app = Flask(__name__)
 CORS(app)
@@ -31,7 +33,8 @@ CORS(app)
 @app.route('/api/upload', methods=['POST'])
 def api_upload():
     """
-    Handles Resume batch upload + JD processing using Spark + JobBERT + Mongo.
+    Handles Resume batch upload + JD processing using Spark + NER skill extraction
+    + Sentence-BERT retrieval + cross-encoder reranking + Mongo.
     """
     jd_text = request.form.get('jd_text', '')
     uploaded_files = request.files.getlist('resumes')
@@ -52,125 +55,6 @@ def api_upload():
         
     resumes = []
     
-    def process_file_content(filename, file_bytes):
-        text = ""
-        filename_lower = filename.lower()
-        if filename_lower.endswith('.pdf'):
-            try:
-                doc = fitz.open(stream=file_bytes, filetype="pdf")
-                for page in doc:
-                    text += page.get_text()
-            except Exception as e:
-                print(f"Error parsing PDF {filename}: {e}")
-        elif filename_lower.endswith(('.jpg', '.jpeg', '.png')):
-            try:
-                import easyocr
-                # Lazily initialize to avoid macOS fork safety crash with PyTorch
-                if 'ocr_reader' not in globals():
-                    global ocr_reader
-                    ocr_reader = easyocr.Reader(['en'], gpu=False)
-                result = ocr_reader.readtext(file_bytes, detail=0)
-                text = " ".join(result)
-            except Exception as e:
-                print(f"Error parsing Image {filename}: {e}")
-
-        elif filename_lower.endswith('.txt'):
-            try:
-                text = file_bytes.decode('utf-8', errors='ignore')
-            except Exception:
-                pass
-        elif filename_lower.endswith('.docx'):
-            try:
-                import docx
-                doc = docx.Document(io.BytesIO(file_bytes))
-                text = "\n".join([p.text for p in doc.paragraphs if p.text])
-            except Exception as e:
-                print(f"Error parsing DOCX {filename}: {e}")
-        return text
-        
-    def extract_metadata(text):
-        email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
-        email = email_match.group(0) if email_match else "Not Found"
-        
-        phone_match = re.search(r'\+?\d[\d\s-]{8,14}\d', text)
-        phone = phone_match.group(0) if phone_match else "Not Found"
-        
-
-        # Comprehensive keyword-based skill extraction (from GitHub repo)
-
-        # Comprehensive keyword-based skill extraction
-
-        # Canonical aliases are shared with JD gap analysis (for example,
-        # k8s -> Kubernetes and sklearn -> scikit-learn).
-        found_skills = extract_skills(text)
-        text_lower = text.lower()
-                
-        # Education extraction (heuristic)
-        edu = "Not Found"
-        if "b.tech" in text_lower or "b.e" in text_lower or "bachelor" in text_lower or "b.sc" in text_lower or "b.des" in text_lower or "b.e." in text_lower:
-            edu = "Bachelor's Degree"
-        if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower or "m.sc" in text_lower or "m.s." in text_lower:
-            edu = "Master's Degree"
-            
-
-        # Experience extraction (multi-strategy heuristic from GitHub repo)
-
-        # Experience extraction (multi-strategy heuristic)
-
-        exp = 0
-        
-        # Strategy 1: Explicit "X years of experience" or "X+ years experience"
-        exp_match = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp\b)', text_lower)
-        if exp_match:
-            exp = int(float(exp_match.group(1)))
-        
-        # Strategy 2: "experience of X years"
-        if exp == 0:
-            exp_match2 = re.search(r'(?:experience|exp)\s+(?:of\s+)?(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
-            if exp_match2:
-                exp = int(float(exp_match2.group(1)))
-        
-        # Strategy 3: "with X years" (common in summaries like "Engineer with 6 years")
-        if exp == 0:
-            exp_match3 = re.search(r'with\s+(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
-            if exp_match3:
-                exp = int(float(exp_match3.group(1)))
-        
-        # Strategy 4: Standalone "X years" near job-related context
-        if exp == 0:
-            exp_match4 = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:in|of|at|as|working|building|developing|designing|managing)', text_lower)
-            if exp_match4:
-                exp = int(float(exp_match4.group(1)))
-        
-        # Strategy 5 (Fallback): Compute career span from date ranges
-        # Use SPAN (latest end - earliest start) NOT sum, to avoid inflation
-        if exp == 0:
-            date_ranges = re.findall(r'(20\d{2})\s*(?:-|to|–|—)\s*(20\d{2}|present|now|current)', text_lower)
-            if date_ranges:
-                all_starts = []
-                all_ends = []
-                for start, end in date_ranges:
-                    s = int(start)
-                    e = datetime.now().year if end in ['present', 'now', 'current'] else int(end)
-
-                    # Only consider work-era dates (after 2010) to skip education
-
-                    if s >= 2010 and e >= s:
-                        all_starts.append(s)
-                        all_ends.append(e)
-                if all_starts and all_ends:
-                    exp = max(all_ends) - min(all_starts)
-        
-        if exp > 25: exp = 25 # sanity cap
-        
-        return {
-            "email": email,
-            "phone": phone,
-            "skills": found_skills if found_skills else ["N/A"],
-            "education": edu,
-            "experience": exp
-        }
-
     for file in uploaded_files:
         filename = file.filename
         
@@ -192,8 +76,12 @@ def api_upload():
                                     "email": meta["email"],
                                     "phone": meta["phone"],
                                     "education": meta["education"],
-                                    "skills": meta["skills"], 
-                                    "experience": meta["experience"] 
+                                    "skills": meta["skills"],
+                                    "experience": meta["experience"],
+                                    "ner_skills": meta["ner_skills"],
+                                    "ner_only_skills": meta["ner_only_skills"],
+                                    "soft_skills": meta["soft_skills"],
+                                    "skill_parser": meta["skill_parser"]
                                 })
             except Exception as e:
                 print(f"Error reading ZIP {filename}: {e}")
@@ -209,8 +97,12 @@ def api_upload():
                     "email": meta["email"],
                     "phone": meta["phone"],
                     "education": meta["education"],
-                    "skills": meta["skills"], 
-                    "experience": meta["experience"] 
+                    "skills": meta["skills"],
+                    "experience": meta["experience"],
+                    "ner_skills": meta["ner_skills"],
+                    "ner_only_skills": meta["ner_only_skills"],
+                    "soft_skills": meta["soft_skills"],
+                    "skill_parser": meta["skill_parser"]
                 })
 
     if not resumes:
@@ -223,7 +115,7 @@ def api_upload():
         chunks_inserted = process_resumes_batch(resumes)
         spark_time = round(time.time() - t_start, 2)
 
-        # 2. Search for best candidates using JobBERT + Vector Search (scoped to uploaded batch)
+        # 2. Rank the uploaded batch: Sentence-BERT retrieval + cross-encoder reranking
         t_search = time.time()
         uploaded_ids = [r['resume_id'] for r in resumes]
         rankings = search_best_candidates(jd_text, top_k=10, resume_ids=uploaded_ids)
@@ -237,12 +129,13 @@ def api_upload():
     
     # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
+        required_skills = extract_jd_skills(jd_text)
         for r in resumes:
             skill_score = min(40, len([s for s in r.get('skills', []) if s != 'N/A']) * 8)
             exp_score = min(30, r.get('experience', 0) * 3)
             edu_bonus = 20 if 'Master' in str(r.get('education', '')) else (15 if 'Bachelor' in str(r.get('education', '')) else 5)
             det_score = max(10, min(100, skill_score + exp_score + edu_bonus))
-            gap = skill_gap(r.get('skills', []), jd_text)
+            gap = skill_gap(r.get('skills', []), jd_text, jd_skills=required_skills)
             rankings.append({
                 "name": r.get('name', 'Unknown'),
                 "ai_score": round(det_score, 2),
@@ -257,6 +150,9 @@ def api_upload():
                 "model_version": "none",
                 "experience": r.get('experience', 0),
                 "skills": r.get('skills', []),
+                "ner_only_skills": r.get('ner_only_skills', []),
+                "soft_skills": r.get('soft_skills', []),
+                "skill_parser": r.get('skill_parser', 'dictionary'),
                 "email": r.get('email', 'Not Found'),
                 "phone": r.get('phone', 'Not Found'),
                 "education": r.get('education', 'Not Found')

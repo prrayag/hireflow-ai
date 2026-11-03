@@ -1,0 +1,17 @@
+[
+  {
+    "jd_id": "backend_python",
+    "title": "Senior Python Backend Engineer",
+    "text": "Senior Python backend engineer with 5+ years of experience building REST APIs. Required skills: Python, Django or Flask, FastAPI, PostgreSQL and Docker."
+  },
+  {
+    "jd_id": "frontend",
+    "title": "Frontend Engineer",
+    "text": "Frontend engineer experienced with JavaScript, TypeScript, React, Angular or Vue.js, HTML and CSS for modern responsive applications."
+  },
+  {
+    "jd_id": "devops",
+    "title": "DevOps Engineer",
+    "text": "DevOps engineer with AWS, Docker, Kubernetes, CI/CD automation, Git and Python infrastructure tooling."
+  }
+]

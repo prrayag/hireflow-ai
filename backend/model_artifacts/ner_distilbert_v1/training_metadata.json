@@ -1,0 +1,68 @@
+{
+  "model": "distilbert-base-cased fine-tuned for token classification",
+  "dataset": "SkillSpan (Zhang et al., NAACL 2022), CC BY 4.0 - human-annotated job postings",
+  "train_sentences": 4800,
+  "dev_sentences": 3174,
+  "labels": [
+    "O",
+    "B-TECH",
+    "I-TECH",
+    "B-SOFT",
+    "I-SOFT"
+  ],
+  "hyperparameters": {
+    "lr": 5e-05,
+    "batch_size": 16,
+    "epochs_planned": 6,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "optimizer": "AdamW + linear warmup/decay",
+    "grad_clip": 1.0,
+    "max_length": 256,
+    "seed": 42,
+    "device": "mps"
+  },
+  "best_epoch": {
+    "epoch": 3,
+    "train_loss": 0.1007,
+    "dev_micro_f1": 0.4936,
+    "dev_tech_f1": 0.5598,
+    "dev_soft_f1": 0.4297,
+    "elapsed_seconds": 719.9
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.4742,
+      "dev_micro_f1": 0.4043,
+      "dev_tech_f1": 0.4784,
+      "dev_soft_f1": 0.3233,
+      "elapsed_seconds": 219.8
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.1905,
+      "dev_micro_f1": 0.4748,
+      "dev_tech_f1": 0.5444,
+      "dev_soft_f1": 0.4002,
+      "elapsed_seconds": 473.1
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.1007,
+      "dev_micro_f1": 0.4936,
+      "dev_tech_f1": 0.5598,
+      "dev_soft_f1": 0.4297,
+      "elapsed_seconds": 719.9
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.0529,
+      "dev_micro_f1": 0.4924,
+      "dev_tech_f1": 0.552,
+      "dev_soft_f1": 0.4279,
+      "elapsed_seconds": 989.9
+    }
+  ],
+  "note": "Training was stopped during epoch 5 because the machine ran out of disk space (swap growth). The saved checkpoint is the best dev epoch; epoch 4 was already below it while training loss kept falling, i.e. the model had started to overfit."
+}

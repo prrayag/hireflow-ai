@@ -428,11 +428,18 @@ function DashboardPage() {
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Background</span>
                                                                         <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Education:</strong> {candidate.education}</p>
                                                                         <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
+                                                                        {(candidate.ner_only_skills || []).length > 0 && (
+                                                                            <p title="Skills the NER model found that the keyword dictionary does not contain" style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Found by NER model:</strong> {candidate.ner_only_skills.join(', ')}</p>
+                                                                        )}
+                                                                        {(candidate.soft_skills || []).length > 0 && (
+                                                                            <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Soft skills:</strong> {candidate.soft_skills.join(', ')}</p>
+                                                                        )}
+                                                                        <p style={{ margin: '6px 0 0', fontSize: '0.82rem', color: 'var(--ink)', opacity: 0.65 }}>Skill parser: {candidate.skill_parser || 'dictionary'}</p>
                                                                     </div>
                                                                     <div style={{ flex: '1 1 260px' }}>
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>DL Score Breakdown</span>
-                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Semantic retrieval:</strong> {candidate.semantic_score ?? 'N/A'}{candidate.semantic_score != null ? '%' : ''}</p>
-                                                                        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Cross-encoder:</strong> {candidate.reranker_score ?? 'Fallback mode'}{candidate.reranker_score != null ? '%' : ''}</p>
+                                                                        <p title="Semantic similarity between the resume and the job description from a general-purpose Sentence-BERT model (all-MiniLM-L6-v2), not a job-specific model" style={{ margin: '8px 0 4px', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Semantic match:</strong> {candidate.semantic_score ?? 'N/A'}{candidate.semantic_score != null ? '%' : ''}</p>
+                                                                        <p title="MiniLM cross-encoder fine-tuned on weakly-labelled (synthetic) resume-JD pairs; reads the JD and resume evidence together" style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Cross-encoder:</strong> {candidate.reranker_score ?? 'Fallback mode'}{candidate.reranker_score != null ? '%' : ''}</p>
                                                                         <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Skill coverage:</strong> {candidate.skill_coverage ?? 0}%</p>
                                                                         <p style={{ margin: '4px 0', fontSize: '0.82rem', color: 'var(--ink)', opacity: 0.65 }}>{candidate.inference_mode} · {candidate.model_version}</p>
                                                                     </div>

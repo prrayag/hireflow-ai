@@ -47,3 +47,11 @@ resumes/
 
 # backend data directory (duplicate of root XLSX)
 backend/data/
+
+# NER training data (downloaded by backend/training/ner_data.py) and logs
+data_external/
+backend/training/results/*.log
+
+# Fine-tuned DistilBERT NER weights (~260 MB, over GitHub's 100 MB file limit).
+# Recreate with backend/training/train_ner_transformer.py or share via Git LFS / HF Hub.
+backend/model_artifacts/ner_distilbert_v1/model.safetensors

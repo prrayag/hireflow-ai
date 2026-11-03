@@ -1,0 +1,121 @@
+{
+  "skillspan_test": {
+    "description": "SkillSpan test split: human-annotated job-posting sentences, not used in training.",
+    "sentences": 3569,
+    "documents": 65,
+    "systems": {
+      "dictionary": {
+        "entity_scores": {
+          "TECH": {
+            "precision": 0.6204,
+            "recall": 0.1712,
+            "f1": 0.2684,
+            "support": 1174
+          },
+          "SOFT": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1102
+          },
+          "micro": {
+            "precision": 0.6204,
+            "recall": 0.0883,
+            "f1": 0.1546,
+            "support": 2276
+          }
+        },
+        "unseen_tech_recall": {
+          "recall": 0.0,
+          "support": 973
+        },
+        "ms_per_sentence": null
+      },
+      "distilbert": {
+        "entity_scores": {
+          "TECH": {
+            "precision": 0.5647,
+            "recall": 0.6022,
+            "f1": 0.5829,
+            "support": 1174
+          },
+          "SOFT": {
+            "precision": 0.4167,
+            "recall": 0.4247,
+            "f1": 0.4207,
+            "support": 1102
+          },
+          "micro": {
+            "precision": 0.4947,
+            "recall": 0.5163,
+            "f1": 0.5053,
+            "support": 2276
+          }
+        },
+        "unseen_tech_recall": {
+          "recall": 0.5591,
+          "support": 973
+        },
+        "ms_per_sentence": 5.919
+      },
+      "bilstm_crf": {
+        "entity_scores": {
+          "TECH": {
+            "precision": 0.5199,
+            "recall": 0.4676,
+            "f1": 0.4924,
+            "support": 1174
+          },
+          "SOFT": {
+            "precision": 0.3183,
+            "recall": 0.2368,
+            "f1": 0.2716,
+            "support": 1102
+          },
+          "micro": {
+            "precision": 0.4318,
+            "recall": 0.3559,
+            "f1": 0.3902,
+            "support": 2276
+          }
+        },
+        "unseen_tech_recall": {
+          "recall": 0.407,
+          "support": 973
+        },
+        "ms_per_sentence": 0.842
+      }
+    }
+  },
+  "generated_resumes": {
+    "description": "Set-level skill extraction on the project's 100 generated resumes. Ground truth is the generator's skill list; real skills mentioned in the text but not on that list count as false positives. These resumes were also used for error analysis when designing the parser's span filters (skip the education section, keep leading dots, drop vague phrases such as 'modern web technologies'), so this is not a blind test - the SkillSpan test split above is.",
+    "resumes": 100,
+    "systems": {
+      "dictionary": {
+        "precision": 0.9505,
+        "recall": 0.768,
+        "f1": 0.8496
+      },
+      "distilbert_only": {
+        "precision": 0.952,
+        "recall": 0.8256,
+        "f1": 0.8843
+      },
+      "distilbert+dictionary": {
+        "precision": 0.9388,
+        "recall": 0.9328,
+        "f1": 0.9358
+      },
+      "bilstm_crf_only": {
+        "precision": 0.9303,
+        "recall": 0.7904,
+        "f1": 0.8547
+      },
+      "bilstm_crf+dictionary": {
+        "precision": 0.9201,
+        "recall": 0.9216,
+        "f1": 0.9209
+      }
+    }
+  }
+}

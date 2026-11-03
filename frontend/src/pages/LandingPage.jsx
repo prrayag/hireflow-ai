@@ -467,10 +467,10 @@ function LandingPage() {
                     <h2 className="lp-section-title">Three layers of intelligence,<br />working together.</h2>
                 </div>
                 <FeatureRow tag="Resume ingestion" title="Multimodal Resume Parsing"
-                    description="Upload any format, PDF, DOCX, or a ZIP archive of hundreds. Our OCR pipeline reads scanned images and digital files equally well, extracting every structured data point automatically."
+                    description="Upload any format, PDF, DOCX, or a ZIP archive of hundreds. Our OCR pipeline reads scanned images and digital files, and a fine-tuned DistilBERT NER model tags skills from context, including ones no keyword list contains."
                     illustration={<ParseIllustration />} reverse={false} />
-                <FeatureRow tag="AI Scoring Engine" title="JobBERT Semantic Matching"
-                    description="Uses JobBERT to semantically chunk resumes and match them directly against the Job Description. Pure contextual understanding powered by MongoDB Vector Search."
+                <FeatureRow tag="AI Scoring Engine" title="Semantic Matching + Neural Reranking"
+                    description="A general-purpose Sentence-BERT model embeds resume sections and retrieves the closest matches to the Job Description, then a fine-tuned cross-encoder re-scores each candidate against it."
                     illustration={<ScoreIllustration />} reverse={true} />
                 <FeatureRow tag="Big Data Processing" title="Apache Spark Parallelization"
                     description="Handles high velocity and volume of input batches. PySpark parallelizes the chunking and embedding generation for hundreds of resumes instantly."

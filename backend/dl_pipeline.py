@@ -114,19 +114,100 @@ def process_resume_record(resume: dict) -> list[dict]:
                 "education": resume.get("education", "Not Found"),
                 "skills": resume.get("skills", []),
                 "experience": resume.get("experience", 0),
+                "ner_only_skills": resume.get("ner_only_skills", []),
+                "soft_skills": resume.get("soft_skills", []),
+                "skill_parser": resume.get("skill_parser", "dictionary"),
             },
         })
     return records
 
 
-def skill_gap(resume_skills: list[str], jd_text: str) -> dict[str, object]:
-    jd_skills = extract_skills(jd_text)
-    candidate = set(resume_skills)
-    matched = [skill for skill in jd_skills if skill in candidate]
-    missing = [skill for skill in jd_skills if skill not in candidate]
+def skill_gap(resume_skills: list[str], jd_text: str,
+              jd_skills: list[str] | None = None) -> dict[str, object]:
+    """Compare resume skills with the JD's skills.
+
+    jd_skills lets the caller pass skills found by the NER model; by default the
+    JD is matched against the dictionary only. Comparison is case-insensitive so
+    NER spans such as "snowflake" match "Snowflake".
+    """
+    if jd_skills is None:
+        jd_skills = extract_skills(jd_text)
+    candidate = {skill.lower() for skill in resume_skills}
+    matched = [skill for skill in jd_skills if skill.lower() in candidate]
+    missing = [skill for skill in jd_skills if skill.lower() not in candidate]
     coverage = len(matched) / len(jd_skills) * 100.0 if jd_skills else 0.0
     return {"jd_skills": jd_skills, "matched_skills": matched,
             "missing_skills": missing, "skill_coverage": round(coverage, 2)}
+
+
+_MONTHS = {name: index for index, name in enumerate(
+    ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), start=1)}
+_MONTH_WORD = (r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?"
+               r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?")
+_ONGOING = r"present|current(?:ly)?|now|today|till\s+date|to\s+date|date|ongoing"
+
+
+def _date_pattern(prefix: str) -> str:
+    """A date such as "2019", "Jan 2019", "January, 2019", "06/2019" or "6-2019"."""
+    return (rf"(?:(?P<{prefix}m>{_MONTH_WORD})\s*,?\s*|(?P<{prefix}n>\d{{1,2}})\s*[/.\-]\s*)?"
+            rf"(?P<{prefix}y>(?:19|20)\d{{2}})")
+
+
+_DATE_RANGE = re.compile(
+    _date_pattern("s") + r"\s*(?:-|–|—|to|until|till)\s*(?:"
+    + _date_pattern("e") + rf"|(?P<ongoing>{_ONGOING}))\b",
+    re.I,
+)
+
+
+def _month_index(match: re.Match, prefix: str, default_month: int) -> int:
+    year = int(match.group(f"{prefix}y"))
+    month_word, month_number = match.group(f"{prefix}m"), match.group(f"{prefix}n")
+    if month_word:
+        month = _MONTHS[month_word.lower()[:3]]
+    elif month_number and 1 <= int(month_number) <= 12:
+        month = int(month_number)
+    else:
+        month = default_month
+    return year * 12 + (month - 1)
+
+
+def experience_from_date_ranges(text: str, today: tuple[int, int] | None = None) -> float:
+    """Total years covered by work date ranges, ignoring the education section.
+
+    Handles "Jan 2019 - Mar 2022", "06/2019 – Present", "2018-Present" and
+    "March 2020 to date". Overlapping jobs are merged so concurrent roles are not
+    double-counted. Returns 0.0 when no usable range is found.
+    """
+    if today is None:
+        from datetime import date
+        now = date.today()
+        today = (now.year, now.month)
+    today_index = today[0] * 12 + (today[1] - 1)
+    sections = split_sections(text)
+    work_text = " ".join(body for name, body in sections.items()
+                         if name not in {"education", "certifications"})
+    intervals = []
+    for match in _DATE_RANGE.finditer(work_text):
+        start = _month_index(match, "s", 1)
+        if match.group("ongoing"):
+            end = today_index
+        else:
+            # A bare end year ("2019 - 2021") counts through December of that year.
+            end = _month_index(match, "e", 12)
+        if start <= end <= today_index + 1 and start >= 1970 * 12:
+            intervals.append((start, end + 1))
+    if not intervals:
+        return 0.0
+    intervals.sort()
+    merged = [list(intervals[0])]
+    for start, end in intervals[1:]:
+        if start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    months = sum(end - start for start, end in merged)
+    return round(months / 12.0, 1)
 
 
 def requested_experience(jd_text: str) -> float | None:
