@@ -1,61 +1,49 @@
-# Node modules
+# dependencies
 node_modules/
-package-lock.json
-
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
+*.pyc
+
+# uploaded/extracted files (generated at runtime)
+backend/uploads/
+backend/extracted/
+
+# python virtual environment
+backend/venv/
+backend/.model_cache/
 venv/
-ENV/
-build/
-develop-eggs/
+
+# environment variables
+.env
+
+# build output
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+
+# macOS junk
+.DS_Store
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# Environment
-.env
-.env.local
-.env.*.local
+# generated model artifacts
+backend/model.pkl
+backend/label_encoders.pkl
+backend/confusion_matrix.png
+backend/feature_importance.png
 
-# OS
-.DS_Store
-Thumbs.db
+# runtime data
+backend/candidates_data.json
 
-# Logs
-*.log
-logs/
+# logs and debug output
+backend/*.log
+backend/*.txt
+!backend/requirements.txt
 
-# Spark
-.spark-*
-metastore_db/
+# test data directories (can be regenerated)
+test_batches/
+non_it_test_batches/
+test_data/
+resumes/
 
-# MongoDB
-.mongod.lock
-
-# Project specific
-.cache/
-tmp/
-*.zip
-test_resumes/
+# backend data directory (duplicate of root XLSX)
+backend/data/

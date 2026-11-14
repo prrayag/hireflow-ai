@@ -1,0 +1,22 @@
+{
+  "base_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "training_data": "backend/training/data/train.jsonl",
+  "label_source": "synthetic_skill_coverage_rule_v1",
+  "epochs": 2,
+  "batch_size": 8,
+  "learning_rate": 2e-05,
+  "seed": 42,
+  "device": "cpu",
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.6203411560166966,
+      "validation_loss": 0.5036870121955872
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.5231514095582745,
+      "validation_loss": 0.4461733907461166
+    }
+  ]
+}

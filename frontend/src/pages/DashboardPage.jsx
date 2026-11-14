@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { filterRankings } from '../utils/rankingFilters';
 import '../styles/landing.css'; 
+import '../styles/ranking-controls.css';
 
 const LoadingSpinner = () => {
     const [msgIndex, setMsgIndex] = useState(0);
     const messages = [
         "Booting Apache Spark Cluster...",
         "Running Multimodal OCR Extraction...",
-        "Loading JobBERT Deep Learning Model...",
+        "Loading Neural Retrieval Models...",
         "Converting Text to 384-D Vectors...",
-        "Executing Cosine Similarity Search..."
+        "Reranking Candidates with Cross-Encoder..."
     ];
 
     useEffect(() => {
@@ -51,14 +53,30 @@ function DashboardPage() {
     const [files, setFiles] = useState(null);
     const [expandedRow, setExpandedRow] = useState(null);
     const [timing, setTiming] = useState(null);
-    const [sparkUp, setSparkUp] = useState(false);
+    const [skippedFiles, setSkippedFiles] = useState([]);
+    const [query, setQuery] = useState('');
+    const [minScore, setMinScore] = useState('');
+    const [minExperience, setMinExperience] = useState('');
+    const [skill, setSkill] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const filteredRankings = useMemo(() => filterRankings(rankings, { query, minScore, minExperience, skill }),
+        [rankings, query, minScore, minExperience, skill]);
+    const availableSkills = useMemo(() => [...new Set(rankings.flatMap(c => c.skills || []))]
+        .filter(s => s !== 'N/A').sort(), [rankings]);
+    const totalPages = Math.max(1, Math.ceil(filteredRankings.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const pageStart = (currentPage - 1) * pageSize;
+    const visibleRankings = filteredRankings.slice(pageStart, pageStart + pageSize);
 
-    // Show the Spark UI link only when the backend actually has a Spark session
     useEffect(() => {
-        axios.get(`${API_BASE_URL}/health`)
-            .then(res => setSparkUp(!!res.data.spark))
-            .catch(() => setSparkUp(false));
-    }, []);
+        setPage(1);
+        setExpandedRow(null);
+    }, [rankings, query, minScore, minExperience, skill, pageSize]);
+
+    const resetFilters = () => {
+        setQuery(''); setMinScore(''); setMinExperience(''); setSkill('');
+    };
 
     const handleUpload = async () => {
         if (!jdText.trim()) {
@@ -68,6 +86,7 @@ function DashboardPage() {
         setLoading(true);
         setError(null);
         setTiming(null);
+        setSkippedFiles([]);
         
         try {
             const formData = new FormData();
@@ -83,11 +102,14 @@ function DashboardPage() {
             });
             
             setRankings(response.data.rankings);
+            setSkippedFiles(response.data.skipped_files || []);
+            resetFilters();
             if (response.data.timing) {
                 setTiming(response.data.timing);
             }
             fetchAnalytics();
         } catch (err) {
+            setSkippedFiles(err.response?.data?.skipped_files || []);
             console.error("Upload error:", err);
             if (!err.response) {
                 setError("Cannot reach the backend. Make sure start_windows.bat is running and the backend window shows 'Flask on :5001'.");
@@ -111,21 +133,21 @@ function DashboardPage() {
     const handleExportCSV = () => {
         // Build CSV entirely client-side — no backend call needed
         const headers = ['Rank', 'Candidate Name', 'AI Match Score (%)', 'Email', 'Phone', 'Education', 'Years of Experience', 'Skills'];
-        const rows = rankings.map((c, i) => [
+        const rows = filteredRankings.map((c, i) => [
             i + 1,
             c.name || 'Unknown',
-            c.ai_score || 'N/A',
+            c.ai_score ?? 'N/A',
             c.email || 'Not Found',
             c.phone || 'Not Found',
             c.education || 'Not Found',
-            c.experience || 'N/A',
+            c.experience ?? 'N/A',
             (c.skills || []).join(', ')
         ]);
         
         // Escape fields that might contain commas
         const escape = (val) => {
             const str = String(val);
-            return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+            return /[,"\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
         };
         
         const csvContent = [
@@ -258,17 +280,25 @@ function DashboardPage() {
                             </div>
                         )}
 
+                        {skippedFiles.length > 0 && (
+                            <div role="status" className="ranking-warning">
+                                <strong>{skippedFiles.length} file(s) could not be processed.</strong>
+                                <ul>{skippedFiles.map((file, index) => <li key={index}>{file.filename}: {file.reason}</li>)}</ul>
+                            </div>
+                        )}
+
                         {/* Rankings Results */}
                         {rankings.length > 0 && (
                             <div className="ui-mockup" style={{ padding: '40px', background: 'var(--card-bg, #fff)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)', animation: 'fadeIn 0.6s ease-out' }}>
                                 
                                 {/* Top bar with title + action buttons */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-                                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', margin: 0 }}>Top Candidates</h2>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: '700', color: 'var(--ink)', margin: 0 }}>Ranked Candidates ({rankings.length})</h2>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                         {/* Export CSV Button */}
-                                        <button
+                                        <button 
                                             onClick={handleExportCSV}
+                                            disabled={filteredRankings.length === 0}
                                             style={{
                                                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                                                 padding: '10px 20px', borderRadius: '10px',
@@ -285,45 +315,64 @@ function DashboardPage() {
                                                 <polyline points="7 10 12 15 17 10"/>
                                                 <line x1="12" y1="15" x2="12" y2="3"/>
                                             </svg>
-                                            Export CSV
+                                            Export filtered CSV ({filteredRankings.length})
                                         </button>
-                                        {/* Spark UI Button (only when Spark is running) */}
-                                        {sparkUp && (
-                                            <a
-                                                href="http://localhost:4040"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                                    padding: '10px 20px', borderRadius: '10px',
-                                                    background: 'rgba(59,126,248,0.08)', border: '1px solid rgba(59,126,248,0.2)',
-                                                    color: '#3b7ef8', fontWeight: '600', fontSize: '0.88rem',
-                                                    cursor: 'pointer', transition: 'all 0.2s',
-                                                    textDecoration: 'none', fontFamily: 'inherit'
-                                                }}
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                                                </svg>
-                                                Spark UI
-                                            </a>
-                                        )}
+                                        {/* Spark UI Button */}
+                                        <a 
+                                            href="http://localhost:4040"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                                padding: '10px 20px', borderRadius: '10px',
+                                                background: 'rgba(59,126,248,0.08)', border: '1px solid rgba(59,126,248,0.2)',
+                                                color: '#3b7ef8', fontWeight: '600', fontSize: '0.88rem',
+                                                cursor: 'pointer', transition: 'all 0.2s',
+                                                textDecoration: 'none', fontFamily: 'inherit'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,126,248,0.15)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,126,248,0.08)'; }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                            </svg>
+                                            Spark UI
+                                        </a>
                                     </div>
                                 </div>
 
+                                <div className="ranking-filters">
+                                    <label>Search candidates
+                                        <input type="search" placeholder="Name, email or skill" value={query} onChange={e => setQuery(e.target.value)} />
+                                    </label>
+                                    <label>Minimum match (%)
+                                        <input type="number" min="0" max="100" placeholder="Any" value={minScore} onChange={e => setMinScore(e.target.value)} />
+                                    </label>
+                                    <label>Minimum experience (years)
+                                        <input type="number" min="0" placeholder="Any" value={minExperience} onChange={e => setMinExperience(e.target.value)} />
+                                    </label>
+                                    <label>Skill
+                                        <select value={skill} onChange={e => setSkill(e.target.value)}>
+                                            <option value="">All skills</option>
+                                            {availableSkills.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </label>
+                                    <button type="button" onClick={resetFilters}>Clear filters</button>
+                                </div>
+                                <p role="status" className="ranking-count">{filteredRankings.length} of {rankings.length} candidates match your filters.</p>
                                 <div style={{ overflowX: 'auto' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
                                         <thead>
                                             <tr style={{ borderBottom: '2px solid var(--border)' }}>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Candidate Name</th>
-                                                <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>JobBERT Match</th>
+                                                <th title="Neural semantic retrieval, reranking, skill coverage and experience fit" style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Neural Match</th>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Experience</th>
                                                 <th style={{ padding: '16px', color: 'var(--ink)', opacity: 0.7, fontWeight: '600', textAlign: 'center' }}>Top Skills</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {rankings.map((candidate, idx) => (
-                                                <React.Fragment key={idx}>
+                                            {visibleRankings.map((candidate, idx) => (
+                                                <React.Fragment key={candidate.resume_id || `${pageStart}-${idx}`}>
                                                     <tr 
                                                         onClick={() => setExpandedRow(expandedRow === idx ? null : idx)}
                                                         style={{ 
@@ -378,155 +427,47 @@ function DashboardPage() {
                                                                     <div style={{ flex: '1 1 200px' }}>
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Background</span>
                                                                         <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Education:</strong> {candidate.education}</p>
-                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
-                                                                        {candidate.gap_analysis && (
-                                                                            <p style={{ margin: '8px 0 0', fontSize: '0.95rem', color: '#667eea', fontWeight: '600' }}>
-                                                                                <strong>Gap Analysis:</strong> {candidate.gap_analysis.match_count}/{candidate.gap_analysis.total_required} required skills matched ({candidate.gap_analysis.match_percentage.toFixed(1)}%) - {candidate.gap_analysis.status === 'strong_match' ? '🟢 Strong' : candidate.gap_analysis.status === 'medium_match' ? '🟡 Medium' : '🔴 Weak'}
-                                                                            </p>
-                                                                        )}
+                                                                        <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
+                                                                    </div>
+                                                                    <div style={{ flex: '1 1 260px' }}>
+                                                                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>DL Score Breakdown</span>
+                                                                        <p style={{ margin: '8px 0 4px', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Semantic retrieval:</strong> {candidate.semantic_score ?? 'N/A'}{candidate.semantic_score != null ? '%' : ''}</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Cross-encoder:</strong> {candidate.reranker_score ?? 'Fallback mode'}{candidate.reranker_score != null ? '%' : ''}</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.9rem', color: 'var(--ink)' }}><strong>Skill coverage:</strong> {candidate.skill_coverage ?? 0}%</p>
+                                                                        <p style={{ margin: '4px 0', fontSize: '0.82rem', color: 'var(--ink)', opacity: 0.65 }}>{candidate.inference_mode} · {candidate.model_version}</p>
+                                                                    </div>
+                                                                    <div style={{ flex: '1 1 100%', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                                                                        <p style={{ margin: '0 0 6px', fontSize: '0.9rem', color: '#16a34a' }}><strong>Matched skills:</strong> {(candidate.matched_skills || []).join(', ') || 'None detected'}</p>
+                                                                        <p style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#dc2626' }}><strong>Missing skills:</strong> {(candidate.missing_skills || []).join(', ') || 'None detected'}</p>
+                                                                        <strong style={{ fontSize: '0.9rem', color: 'var(--ink)' }}>Most relevant evidence</strong>
+                                                                        <ul style={{ margin: '6px 0 0', paddingLeft: '20px', color: 'var(--ink)', opacity: 0.82 }}>
+                                                                            {(candidate.relevant_sentences || []).map((sentence, evidenceIdx) => (
+                                                                                <li key={evidenceIdx} style={{ marginBottom: '5px', fontSize: '0.86rem' }}>{sentence}</li>
+                                                                            ))}
+                                                                        </ul>
                                                                     </div>
                                                                 </div>
-
-                                                                {/* [Feature 3] Extractive resume summary */}
-                                                                {candidate.summary && (
-                                                                    <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '12px', padding: '16px 20px', marginTop: '16px', width: '100%' }}>
-                                                                        <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#b45309', marginBottom: '6px' }}>
-                                                                            📝 AI Summary <span style={{ fontWeight: '500', opacity: 0.8 }}>(resume sentences most relevant to the JD)</span>
-                                                                        </div>
-                                                                        <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.55, color: '#78350f' }}>{candidate.summary}</p>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* [Feature 1] Skills recognised from spelling variants by the embedding model */}
-                                                                {candidate.dl_skill_matches && candidate.dl_skill_matches.length > 0 && (
-                                                                    <div style={{ background: '#ecfeff', border: '1px solid #67e8f9', borderRadius: '12px', padding: '14px 20px', marginTop: '16px', width: '100%' }}>
-                                                                        <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0e7490', marginBottom: '6px' }}>
-                                                                            🧠 Skills recognised by deep learning ({candidate.dl_skill_matches.length})
-                                                                        </div>
-                                                                        {candidate.dl_skill_matches.map((m, i) => (
-                                                                            <div key={i} style={{ fontSize: '0.88rem', color: '#155e75', padding: '2px 0' }}>
-                                                                                Resume says <strong>"{m.found}"</strong> → <strong>{m.skill}</strong> <span style={{ opacity: 0.7 }}>({Math.round(m.score * 100)}% similar)</span>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* [Feature 2] Gap Analysis */}
-                                                                {candidate.gap_analysis && (
-                                                                    <div style={{
-                                                                        background: '#f0f4ff',
-                                                                        border: '1px solid #667eea',
-                                                                        borderRadius: '12px',
-                                                                        padding: '20px',
-                                                                        marginTop: '16px',
-                                                                        width: '100%'
-                                                                    }}>
-                                                                        <h4 style={{ color: '#667eea', marginBottom: '16px', fontSize: '1rem', fontWeight: '700' }}>
-                                                                            📊 Gap Analysis vs JD
-                                                                        </h4>
-
-                                                                        {/* Match Stats Row */}
-                                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                                                            <div style={{ padding: '12px', background: '#d1fae5', borderRadius: '8px', textAlign: 'center' }}>
-                                                                                <div style={{ fontSize: '0.85rem', color: '#059669', fontWeight: '600', marginBottom: '4px' }}>MATCHED SKILLS</div>
-                                                                                <div style={{ fontSize: '1.8rem', fontWeight: '700', color: '#059669' }}>
-                                                                                    {candidate.gap_analysis.match_count}/{candidate.gap_analysis.total_required}
-                                                                                </div>
-                                                                                <div style={{ fontSize: '0.8rem', color: '#047857' }}>
-                                                                                    {candidate.gap_analysis.match_percentage.toFixed(1)}% Match
-                                                                                </div>
-                                                                            </div>
-
-                                                                            <div style={{ padding: '12px', background: '#fee2e2', borderRadius: '8px', textAlign: 'center' }}>
-                                                                                <div style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: '600', marginBottom: '4px' }}>MISSING SKILLS</div>
-                                                                                <div style={{ fontSize: '1.8rem', fontWeight: '700', color: '#dc2626' }}>
-                                                                                    {candidate.gap_analysis.missing_count}
-                                                                                </div>
-                                                                                <div style={{ fontSize: '0.8rem', color: '#991b1b' }}>
-                                                                                    Required but not found
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* DL: similar skills (embedding similarity) */}
-                                                                        {candidate.gap_analysis.similar_skills && candidate.gap_analysis.similar_skills.length > 0 && (
-                                                                            <div style={{ marginBottom: '20px', padding: '14px', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px' }}>
-                                                                                <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#6d28d9', marginBottom: '6px' }}>
-                                                                                    🧠 SIMILAR SKILLS FOUND BY DEEP LEARNING ({candidate.gap_analysis.similar_skills.length})
-                                                                                </div>
-                                                                                <div style={{ fontSize: '0.82rem', color: '#5b21b6', marginBottom: '10px' }}>
-                                                                                    Keyword match only: <strong>{candidate.gap_analysis.match_percentage.toFixed(1)}%</strong> → similarity-weighted: <strong>{candidate.gap_analysis.match_percentage_with_similar.toFixed(1)}%</strong>
-                                                                                </div>
-                                                                                {candidate.gap_analysis.similar_skills.map((s, i) => (
-                                                                                    <div key={i} style={{ fontSize: '0.88rem', color: '#4c1d95', padding: '3px 0' }}>
-                                                                                        Needs <strong>{s.required}</strong> → has <strong>{s.has}</strong> <span style={{ opacity: 0.7 }}>({Math.round(s.score * 100)}% similar)</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* Matched Skills */}
-                                                                        {candidate.gap_analysis.matched_skills.length > 0 && (
-                                                                            <div style={{ marginBottom: '16px' }}>
-                                                                                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#059669', marginBottom: '8px' }}>
-                                                                                    ✅ HAS ({candidate.gap_analysis.matched_skills.length}):
-                                                                                </div>
-                                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                                                    {candidate.gap_analysis.matched_skills.map((skill, idx) => (
-                                                                                        <span
-                                                                                            key={idx}
-                                                                                            style={{
-                                                                                                background: '#d1fae5',
-                                                                                                color: '#059669',
-                                                                                                padding: '6px 12px',
-                                                                                                borderRadius: '6px',
-                                                                                                fontSize: '0.85rem',
-                                                                                                fontWeight: '500',
-                                                                                                border: '1px solid #6ee7b7'
-                                                                                            }}
-                                                                                        >
-                                                                                            {skill}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* Missing Skills */}
-                                                                        {candidate.gap_analysis.missing_skills.length > 0 && (
-                                                                            <div>
-                                                                                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#dc2626', marginBottom: '8px' }}>
-                                                                                    ❌ MISSING ({candidate.gap_analysis.missing_skills.length}):
-                                                                                </div>
-                                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                                                    {candidate.gap_analysis.missing_skills.map((skill, idx) => (
-                                                                                        <span
-                                                                                            key={idx}
-                                                                                            style={{
-                                                                                                background: '#fee2e2',
-                                                                                                color: '#dc2626',
-                                                                                                padding: '6px 12px',
-                                                                                                borderRadius: '6px',
-                                                                                                fontSize: '0.85rem',
-                                                                                                fontWeight: '500',
-                                                                                                border: '1px solid #fca5a5'
-                                                                                            }}
-                                                                                        >
-                                                                                            {skill}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
                                                             </td>
                                                         </tr>
                                                     )}
                                                 </React.Fragment>
                                             ))}
+                                            {visibleRankings.length === 0 && (
+                                                <tr><td colSpan="4" style={{ padding: '32px' }}>No candidates match these filters. Try lowering the minimum score or clearing filters.</td></tr>
+                                            )}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="ranking-pagination">
+                                    <span>Showing {filteredRankings.length ? pageStart + 1 : 0}–{Math.min(pageStart + pageSize, filteredRankings.length)} of {filteredRankings.length}</span>
+                                    <label>Rows per page
+                                        <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                                            {[10, 25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                                        </select>
+                                    </label>
+                                    <button type="button" disabled={currentPage === 1} onClick={() => { setPage(currentPage - 1); setExpandedRow(null); }}>Previous</button>
+                                    <span>Page {currentPage} of {totalPages}</span>
+                                    <button type="button" disabled={currentPage === totalPages} onClick={() => { setPage(currentPage + 1); setExpandedRow(null); }}>Next</button>
                                 </div>
                             </div>
                         )}

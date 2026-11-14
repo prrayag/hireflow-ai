@@ -20,8 +20,10 @@ import zipfile
 import re
 import time
 import csv
+from datetime import datetime
 from io import StringIO
 from flask import Response
+from dl_pipeline import extract_skills, experience_match, skill_gap
 
 app = Flask(__name__)
 CORS(app)
@@ -42,11 +44,7 @@ def api_upload():
         rankings = search_best_candidates(jd_text, top_k=10)
         if not rankings:
             return jsonify({"error": "No historical candidates found matching this JD. Please upload a batch first."}), 404
-
-        from processor import create_gap_analysis
-        for ranking in rankings:
-            ranking['gap_analysis'] = create_gap_analysis(jd_text, ranking.get('skills', []))
-
+            
         return jsonify({
             "message": "Successfully searched historical Big Data storage.",
             "rankings": rankings
@@ -98,13 +96,15 @@ def api_upload():
         phone = phone_match.group(0) if phone_match else "Not Found"
         
 
-        # ── Skill extraction: exact whole-word match + Sentence-BERT matching ──
-        # (vocabulary lives in skill_catalog.py; see skill_extractor.py)
-        from skill_extractor import extract_skills
-        skill_result = extract_skills(text)
-        found_skills = skill_result["skills"]
-        text_lower = text.lower()
+        # Comprehensive keyword-based skill extraction (from GitHub repo)
 
+        # Comprehensive keyword-based skill extraction
+
+        # Canonical aliases are shared with JD gap analysis (for example,
+        # k8s -> Kubernetes and sklearn -> scikit-learn).
+        found_skills = extract_skills(text)
+        text_lower = text.lower()
+                
         # Education extraction (heuristic)
         edu = "Not Found"
         if "b.tech" in text_lower or "b.e" in text_lower or "bachelor" in text_lower or "b.sc" in text_lower or "b.des" in text_lower or "b.e." in text_lower:
@@ -151,7 +151,7 @@ def api_upload():
                 all_ends = []
                 for start, end in date_ranges:
                     s = int(start)
-                    e = 2025 if end in ['present', 'now', 'current'] else int(end)
+                    e = datetime.now().year if end in ['present', 'now', 'current'] else int(end)
 
                     # Only consider work-era dates (after 2010) to skip education
 
@@ -166,8 +166,7 @@ def api_upload():
         return {
             "email": email,
             "phone": phone,
-            "skills": found_skills[:15] if found_skills else ["N/A"],
-            "dl_matches": skill_result["dl_matches"],
+            "skills": found_skills if found_skills else ["N/A"],
             "education": edu,
             "experience": exp
         }
@@ -194,8 +193,7 @@ def api_upload():
                                     "phone": meta["phone"],
                                     "education": meta["education"],
                                     "skills": meta["skills"], 
-                                    "experience": meta["experience"],
-                                    "dl_skill_matches": meta["dl_matches"]
+                                    "experience": meta["experience"] 
                                 })
             except Exception as e:
                 print(f"Error reading ZIP {filename}: {e}")
@@ -212,8 +210,7 @@ def api_upload():
                     "phone": meta["phone"],
                     "education": meta["education"],
                     "skills": meta["skills"], 
-                    "experience": meta["experience"],
-                    "dl_skill_matches": meta["dl_matches"]
+                    "experience": meta["experience"] 
                 })
 
     if not resumes:
@@ -231,11 +228,6 @@ def api_upload():
         uploaded_ids = [r['resume_id'] for r in resumes]
         rankings = search_best_candidates(jd_text, top_k=10, resume_ids=uploaded_ids)
         search_time = round(time.time() - t_search, 2)
-
-        # [Feature 2] Add gap analysis to all rankings
-        from processor import create_gap_analysis
-        for ranking in rankings:
-            ranking['gap_analysis'] = create_gap_analysis(jd_text, ranking.get('skills', []))
     except Exception as e:
         print(f"Upload processing error: {e}")
         return jsonify({"error": f"Processing failed: {str(e)}"}), 500
@@ -245,39 +237,32 @@ def api_upload():
     
     # If search fails entirely, just return the processed resumes deterministically
     if not rankings:
-        from processor import create_gap_analysis
         for r in resumes:
             skill_score = min(40, len([s for s in r.get('skills', []) if s != 'N/A']) * 8)
             exp_score = min(30, r.get('experience', 0) * 3)
             edu_bonus = 20 if 'Master' in str(r.get('education', '')) else (15 if 'Bachelor' in str(r.get('education', '')) else 5)
             det_score = max(10, min(100, skill_score + exp_score + edu_bonus))
-
-            # [Feature 2] Add gap analysis
-            gap = create_gap_analysis(jd_text, r.get('skills', []))
-
+            gap = skill_gap(r.get('skills', []), jd_text)
             rankings.append({
-                "resume_id": r.get('resume_id'),
                 "name": r.get('name', 'Unknown'),
                 "ai_score": round(det_score, 2),
+                "semantic_score": None,
+                "reranker_score": None,
+                "skill_coverage": gap["skill_coverage"],
+                "experience_match": round(experience_match(r.get('experience', 0), jd_text), 2),
+                "matched_skills": gap["matched_skills"],
+                "missing_skills": gap["missing_skills"],
+                "relevant_sentences": [],
+                "inference_mode": "deterministic-emergency-fallback",
+                "model_version": "none",
                 "experience": r.get('experience', 0),
                 "skills": r.get('skills', []),
                 "email": r.get('email', 'Not Found'),
                 "phone": r.get('phone', 'Not Found'),
-                "education": r.get('education', 'Not Found'),
-                "gap_analysis": gap  # [Feature 2] Gap analysis
+                "education": r.get('education', 'Not Found')
             })
         rankings = sorted(rankings, key=lambda x: x['ai_score'], reverse=True)
-
-    # [Feature 3] Extractive summary + DL skill matches, for the ranked candidates only
-    # (summaries need one embedding pass per resume, so large batches stay fast)
-    from processor import generate_resume_summary
-    resume_by_id = {r['resume_id']: r for r in resumes}
-    for ranking in rankings[:10]:
-        source = resume_by_id.get(ranking.get('resume_id'))
-        if source:
-            ranking['summary'] = generate_resume_summary(source['text'], jd_text)
-            ranking['dl_skill_matches'] = source.get('dl_skill_matches', [])
-
+    
     total_time = round(spark_time + search_time, 2)
     
     return jsonify({

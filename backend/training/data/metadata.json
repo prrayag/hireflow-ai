@@ -1,0 +1,85 @@
+{
+  "label_source": "weak/synthetic\u2014not human validated",
+  "seed": 42,
+  "resume_count": 100,
+  "pair_count": 500,
+  "splits_by_resume": {
+    "train": 70,
+    "validation": 15,
+    "test": 15
+  },
+  "pairs_by_label": {
+    "0": 124,
+    "1": 201,
+    "2": 131,
+    "3": 44
+  },
+  "job_profiles": [
+    {
+      "jd_id": "backend_python",
+      "title": "Senior Python Backend Engineer",
+      "skills": [
+        "Python",
+        "Django",
+        "Flask",
+        "FastAPI",
+        "PostgreSQL",
+        "Docker"
+      ],
+      "text": "Senior Python backend engineer with 5+ years of experience building REST APIs. Required skills: Python, Django or Flask, FastAPI, PostgreSQL and Docker."
+    },
+    {
+      "jd_id": "ml_engineer",
+      "title": "Machine Learning Engineer",
+      "skills": [
+        "Python",
+        "Machine Learning",
+        "TensorFlow",
+        "PyTorch",
+        "Data Science",
+        "AWS"
+      ],
+      "text": "Machine learning engineer with Python, data science, TensorFlow or PyTorch, AWS deployment and production ML experience."
+    },
+    {
+      "jd_id": "frontend",
+      "title": "Frontend Engineer",
+      "skills": [
+        "JavaScript",
+        "TypeScript",
+        "React",
+        "Angular",
+        "Vue.js",
+        "HTML",
+        "CSS"
+      ],
+      "text": "Frontend engineer experienced with JavaScript, TypeScript, React, Angular or Vue.js, HTML and CSS for modern responsive applications."
+    },
+    {
+      "jd_id": "devops",
+      "title": "DevOps Engineer",
+      "skills": [
+        "AWS",
+        "Docker",
+        "Kubernetes",
+        "CI/CD",
+        "Git",
+        "Python"
+      ],
+      "text": "DevOps engineer with AWS, Docker, Kubernetes, CI/CD automation, Git and Python infrastructure tooling."
+    },
+    {
+      "jd_id": "java_fullstack",
+      "title": "Java Full Stack Engineer",
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "SQL",
+        "React",
+        "JavaScript",
+        "Docker"
+      ],
+      "text": "Java full stack engineer with Spring Boot, SQL, React, JavaScript and Docker. Experience delivering production web services is required."
+    }
+  ]
+}

@@ -1,132 +1,148 @@
 # HireFlow AI
 
-AI-powered resume screening. Upload a job description and a batch of resumes; HireFlow extracts skills, ranks
-candidates by semantic similarity to the job, explains the skill gap for each candidate, and shows analytics.
-
-Stack: **React + Vite** frontend, **Flask** backend, **Apache Spark** (PySpark) for parallel processing,
-**Sentence-BERT** (`all-MiniLM-L6-v2`) embeddings, **MongoDB** for storage and vector search.
+AI-powered resume ranking and analytics platform. Upload resumes, retrieve candidates with a Sentence-BERT bi-encoder, rerank them with a cross-encoder neural network, and inspect skill gaps and ranking evidence.
 
 ---
 
-## Deep-learning features
+## Quick Start
 
-| Feature | What it does | Where |
-|---|---|---|
-| Semantic ranking | Resume chunks and the JD are embedded (384-D) and compared by cosine similarity | `processor.py` |
-| Skill recognition from spelling variants | `nodejs`, `postgres`, `ReactJS` are mapped to `Node.js`, `PostgreSQL`, `React` by embedding similarity | `skill_extractor.py` |
-| Gap analysis with similar skills | For each skill the JD needs and the candidate lacks, finds the closest skill the candidate has (e.g. `FastAPI` ~ `Flask`) | `processor.py` |
-| Extractive resume summary | Picks the resume sentences most relevant to the JD | `processor.py` |
-| OCR | EasyOCR reads scanned resumes and images | `app.py` |
+### Windows (your friend's machine)
 
-Measured results (reproducible with `backend/evaluate_dl.py`) are in [EVALUATION.md](EVALUATION.md).
-How it all works, with viva Q&A, is in [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
+**First time only — run setup:**
+```
+Double-click: setup_windows.bat
+```
+
+**Every time you want to start the app:**
+```
+Double-click: start_windows.bat
+```
+
+That's it. It opens the app in your browser automatically.
 
 ---
 
-## Quick start
+### Mac (Prayag's machine)
 
-**Requirements:** Python 3.10+, Node.js 18+, Java 17 (only for Spark; the app falls back to plain Python without it).
-
-### Windows
-```
-setup_windows.bat      (first time only)
-start_windows.bat      (every time)
-```
-
-### Manual (any OS)
+**First time only:**
 ```bash
-# Terminal 1 - backend (http://127.0.0.1:5001)
+# Backend
 cd backend
-python -m venv venv && venv\Scripts\activate      # source venv/bin/activate on Mac/Linux
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-python app.py
 
-# Terminal 2 - frontend (http://localhost:5173)
-cd frontend
+# Frontend
+cd ../frontend
 npm install
-npm run dev
 ```
 
-Open **http://localhost:5173** (the backend root `/` has no page, only `/api/...` routes).
+**Every time:**
+```bash
+# Terminal 1 — Backend
+cd backend && source venv/bin/activate && python3 app.py
 
-### Configuration (environment variables)
+# Terminal 2 — Frontend
+cd frontend && npm run dev
+```
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection; falls back to in-memory storage if unreachable |
-| `PORT` | `5001` | Backend port |
-| `HIREFLOW_USE_SPARK` | `1` | Set `0` to skip Spark and use the Python fallback |
-| `HIREFLOW_SPARK_MEMORY` | `512m` | Spark driver heap (Spark needs at least ~450m) |
-| `VITE_API_URL` | `http://127.0.0.1:5001/api` | Backend URL used by the frontend |
-
-The first request is slow because Sentence-BERT (~90 MB) and EasyOCR models are downloaded and loaded.
+Then open: **http://localhost:5173**
 
 ---
 
-## How it works
+## Requirements
 
-1. **Upload** a JD plus PDF / DOCX / TXT / image files or a ZIP of them.
-2. **Extract text**: PyMuPDF (PDF), python-docx (DOCX), EasyOCR (images).
-3. **Extract fields**: email, phone, education and experience by regex; **skills** by `skill_extractor.py`
-   (exact whole-word match, then embedding match for unrecognised spellings in skill lists).
-4. **Spark**: `parallelize -> flatMap` splits each resume into 20-word chunks in parallel.
-5. **Embed** every chunk with Sentence-BERT and **store** chunks + vectors in MongoDB.
-6. **Rank**: the JD embedding is matched against stored chunks (MongoDB `$vectorSearch`, or local cosine
-   similarity when no vector index exists). Score = 70% similarity + 30% experience, rescaled to 55-95% for display.
-7. **Explain**: gap analysis (has / missing / similar skills) and an extractive summary for the top candidates.
-8. **Analytics** page: charts built from MongoDB with matplotlib.
+| Tool | Version | Download |
+|------|---------|----------|
+| Python | 3.10+ | https://python.org |
+| Node.js | 18+ (LTS) | https://nodejs.org |
+| npm | comes with Node | — |
 
 ---
 
-## API
+## Project Structure
+
+```
+HireFlowAI/
+├── backend/
+│   ├── processor.py            # Neural retrieval + cross-encoder reranking
+│   ├── dl_pipeline.py          # Section chunking, skill gaps, structured signals
+│   ├── app.py                  # API, parsing and analytics
+│   └── requirements.txt        # Python dependencies
+│
+├── frontend/
+│   └── src/
+│       ├── pages/              # LandingPage, Dashboard, UploadPage, AnalyticsPage
+│       ├── components/         # Navbar, CandidateTable, AnimatedBackground
+│       ├── styles/             # CSS per page + global tokens
+│       └── hooks/              # useTheme, useScrollReveal
+│
+├── setup_windows.bat           # Windows: first-time install
+├── start_windows.bat           # Windows: daily start script
+└── start.py                    # Mac: alternative start script
+```
+
+---
+
+## How It Works
+
+1. **Upload** — Drop PDF/DOCX/image resumes (single files or ZIP)
+2. **Parse** — Text is extracted with PyMuPDF, python-docx, or EasyOCR
+3. **Retrieve** — Sentence-BERT embeds section-aware chunks and the JD
+4. **Rerank** — a cross-encoder jointly reads the JD and strongest resume evidence
+5. **Explain** — the API returns semantic, reranker, skill-coverage and experience signals
+6. **Store** — chunk vectors are pushed to MongoDB or retained in memory as a fallback
+7. **Rank** — candidates are sorted by the transparent blended neural score
+
+The models are downloaded into `backend/.model_cache/` on first use. Set
+`ENABLE_CROSS_ENCODER=false` to run only the faster bi-encoder stage.
+
+The reproducible weak-supervision training pipeline is under `backend/training/`.
+If `backend/model_artifacts/cross_encoder_v1/` exists, the backend uses that
+fine-tuned checkpoint; otherwise it safely uses the pretrained cross-encoder.
+
+---
+
+## API Endpoints
 
 | Endpoint | Method | Description |
-|---|---|---|
-| `/api/upload` | POST | `jd_text` + `resumes` files. With no files it searches previously stored resumes |
-| `/api/analytics` | GET | Four chart images (base64) and summary numbers |
-| `/api/stats` | GET | Totals for the landing page |
-| `/api/export` | POST | Rankings as CSV |
-| `/api/health` | GET | `{status, mongodb, spark}` |
+|----------|--------|-------------|
+| `/upload` | POST | Upload resumes (multipart/form-data) |
+| `/results` | GET | Get latest batch (reads MongoDB first) |
+| `/api/big-data-stats` | GET | Analytics data for charts (MongoDB) |
+| `/json-data` | GET | Full local JSON storage dump |
 
 ---
 
-## Project structure
+## MongoDB
 
-```
-backend/
-  app.py                    Flask API, file parsing, metadata extraction
-  processor.py              Spark pipeline, embeddings, ranking, gap analysis, summary
-  skill_catalog.py          Skill vocabulary, categories, aliases
-  skill_extractor.py        Exact + embedding skill extraction
-  generate_skills.py        Builds skills.json (skill embeddings)
-  generate_skill_context.py Builds skill_context.json (category-aware embeddings)
-  evaluate_dl.py            Before/after evaluation -> EVALUATION.md
-  test_semantic_skills.py   Tests for skill matching
-  test_similar_skills.py    Tests for extraction, gap analysis, summary
-frontend/src/
-  pages/                    LandingPage, DashboardPage (rankings + analytics tabs)
-  components/               Navbar, AnimatedBackground, CandidateTable
-generate_test_resumes.py    Creates 10 test resumes in test_data/
-```
+Connected to **MongoDB Atlas** — cluster `HireFlowAI`, database `hireflow_db`, collection `candidates`.
 
-## Tests and evaluation
-
-```bash
-cd backend
-python test_semantic_skills.py
-python test_similar_skills.py
-python ../generate_test_resumes.py     # creates ../test_data/
-python evaluate_dl.py                  # rewrites ../EVALUATION.md
+Each candidate document:
+```json
+{
+  "name": "Vishv Patel",
+  "email": "vishv@gmail.com",
+  "phone": "+91 ...",
+  "score": 72.9,
+  "shortlisted": true,
+  "tab_transformer_score": 12.9,
+  "vector_similarity_score": 35.0,
+  "tfidf_score": 25.0,
+  "skills": ["Python", "Node.js", "AWS", ...],
+  "jd_matched_skills": ["Python", "AWS"],
+  "experience_years": 4,
+  "education": "B.Tech CSE",
+  "batch_id": "...",
+  "uploaded_at": "2026-05-01T..."
+}
 ```
 
-If you change `skill_catalog.py`, regenerate the embeddings: `python generate_skills.py` and
-`python generate_skill_context.py`.
+---
 
-## Known limitations
+## Notes for Windows Users
 
-- Spelling-variant matching works for near-spellings (`nodejs`, `reactjs`) but not for typos or abbreviations
-  with no overlap (`k8s`, `golang`); see EVALUATION.md.
-- The analytics charts use a simple points formula (skills, experience, education), not the AI match score.
-- The funnel chart's "Parsed OK" and "No Anomalies" stages equal the total; there is no anomaly detector.
-- The summary is extractive (selected sentences), not generated text.
-- HDFS is not used; the pipeline reads uploaded files directly.
+- If you get a **"Python not found"** error, reinstall Python and tick ✅ **"Add to PATH"**
+- If you get a **"npm not found"** error, restart your terminal after installing Node.js
+- The first time `setup_windows.bat` runs it may take 5–10 minutes (downloading ML packages)
+- **easyOCR** downloads ~100MB of models on first use — that's normal

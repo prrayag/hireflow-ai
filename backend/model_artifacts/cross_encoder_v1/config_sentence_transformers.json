@@ -1,0 +1,11 @@
+{
+  "__version__": {
+    "pytorch": "2.15.0+cpu",
+    "sentence_transformers": "6.2.0",
+    "transformers": "5.22.1"
+  },
+  "activation_fn": "torch.nn.modules.linear.Identity",
+  "default_prompt_name": null,
+  "model_type": "CrossEncoder",
+  "prompts": {}
+}
