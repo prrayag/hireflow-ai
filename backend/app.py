@@ -24,9 +24,84 @@ from datetime import datetime
 from io import StringIO
 from flask import Response
 from dl_pipeline import extract_skills, experience_match, skill_gap
+from regex_parser import extract_metadata
+from ner_parser import parse_resume
+import ocr_service
+import threading
+import hashlib
 
 app = Flask(__name__)
 CORS(app)
+
+
+# Most candidates one search returns. It used to be a fixed 10, which left the table with a single page.
+# Ranking more candidates costs more cross-encoder passes, so it is capped (set RESULT_LIMIT to change it).
+RESULT_LIMIT = int(os.environ.get("RESULT_LIMIT", "100"))
+
+_PARSE_CACHE = {}
+
+
+def parse_metadata(text, filename):
+    """Neural (NER) parse with the regex parser as fallback; see ner_parser.py.
+
+    The candidate name comes from the resume text when the NER model finds one,
+    otherwise from the file name as before."""
+    key = hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
+    cached = _PARSE_CACHE.get(key)
+    if cached is not None:  # the same resume text again (re-upload, or a duplicate in a batch)
+        meta = dict(cached)
+    else:
+        meta = parse_resume(text, extract_metadata(text))
+        if len(_PARSE_CACHE) >= 5000:
+            _PARSE_CACHE.clear()
+        _PARSE_CACHE[key] = dict(meta)
+    stem = filename.split('/')[-1]
+    for ext in ('.pdf', '.txt', '.docx'):
+        stem = stem.replace(ext, '')
+    meta["name"] = meta.get("name") or stem
+    return meta
+
+
+IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png')
+
+
+def _collect_images(files):
+    """Bytes of every image resume in the upload, including images inside ZIP files."""
+    images = []
+    for f in files:
+        name = (f.filename or '').lower()
+        data = f.read()
+        f.stream.seek(0)
+        if name.endswith(IMAGE_EXTENSIONS):
+            images.append(data)
+        elif name.endswith('.zip'):
+            try:
+                with zipfile.ZipFile(io.BytesIO(data)) as z:
+                    images += [z.read(i) for i in z.infolist()
+                               if not i.is_dir() and i.filename.lower().endswith(IMAGE_EXTENSIONS)
+                               and not i.filename.startswith('__MACOSX')]
+            except Exception:
+                pass
+    return images
+
+
+def warm_up():
+    """Load every model once, so the first upload after a restart is not the slow one.
+
+    Cold start measured at about 17 s for 10 resumes against about 2.5 s warm; the cost is
+    model loading (NER about 7 s, Sentence-BERT about 5 s, OCR reader about 5 s)."""
+    import processor
+    started = time.time()
+    steps = [("NER parser", lambda: parse_resume("Warm up", {"skills": ["N/A"], "education": "Not Found", "experience": 0})),
+             ("bi-encoder", lambda: processor.get_embedding("warm up")),
+             ("cross-encoder", processor._get_cross_encoder),
+             ("OCR reader", ocr_service.get_reader)]
+    for label, step in steps:
+        try:
+            step()
+        except Exception as exc:
+            print(f"[HireFlow] Warm-up skipped {label}: {exc}")
+    print(f"[HireFlow] Models warm after {time.time() - started:.1f}s")
 
 @app.route('/api/upload', methods=['POST'])
 def api_upload():
@@ -41,7 +116,7 @@ def api_upload():
         
     # If no files are provided, perform a Historical Database Search
     if not uploaded_files or uploaded_files[0].filename == '':
-        rankings = search_best_candidates(jd_text, top_k=10)
+        rankings = search_best_candidates(jd_text, top_k=RESULT_LIMIT)
         if not rankings:
             return jsonify({"error": "No historical candidates found matching this JD. Please upload a batch first."}), 404
             
@@ -64,13 +139,7 @@ def api_upload():
                 print(f"Error parsing PDF {filename}: {e}")
         elif filename_lower.endswith(('.jpg', '.jpeg', '.png')):
             try:
-                import easyocr
-                # Lazily initialize to avoid macOS fork safety crash with PyTorch
-                if 'ocr_reader' not in globals():
-                    global ocr_reader
-                    ocr_reader = easyocr.Reader(['en'], gpu=False)
-                result = ocr_reader.readtext(file_bytes, detail=0)
-                text = " ".join(result)
+                text = ocr_service.ocr_image(file_bytes)  # cached by file hash; see ocr_service.py
             except Exception as e:
                 print(f"Error parsing Image {filename}: {e}")
 
@@ -88,88 +157,9 @@ def api_upload():
                 print(f"Error parsing DOCX {filename}: {e}")
         return text
         
-    def extract_metadata(text):
-        email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
-        email = email_match.group(0) if email_match else "Not Found"
-        
-        phone_match = re.search(r'\+?\d[\d\s-]{8,14}\d', text)
-        phone = phone_match.group(0) if phone_match else "Not Found"
-        
 
-        # Comprehensive keyword-based skill extraction (from GitHub repo)
-
-        # Comprehensive keyword-based skill extraction
-
-        # Canonical aliases are shared with JD gap analysis (for example,
-        # k8s -> Kubernetes and sklearn -> scikit-learn).
-        found_skills = extract_skills(text)
-        text_lower = text.lower()
-                
-        # Education extraction (heuristic)
-        edu = "Not Found"
-        if "b.tech" in text_lower or "b.e" in text_lower or "bachelor" in text_lower or "b.sc" in text_lower or "b.des" in text_lower or "b.e." in text_lower:
-            edu = "Bachelor's Degree"
-        if "m.tech" in text_lower or "master" in text_lower or "mba" in text_lower or "m.sc" in text_lower or "m.s." in text_lower:
-            edu = "Master's Degree"
-            
-
-        # Experience extraction (multi-strategy heuristic from GitHub repo)
-
-        # Experience extraction (multi-strategy heuristic)
-
-        exp = 0
-        
-        # Strategy 1: Explicit "X years of experience" or "X+ years experience"
-        exp_match = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp\b)', text_lower)
-        if exp_match:
-            exp = int(float(exp_match.group(1)))
-        
-        # Strategy 2: "experience of X years"
-        if exp == 0:
-            exp_match2 = re.search(r'(?:experience|exp)\s+(?:of\s+)?(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
-            if exp_match2:
-                exp = int(float(exp_match2.group(1)))
-        
-        # Strategy 3: "with X years" (common in summaries like "Engineer with 6 years")
-        if exp == 0:
-            exp_match3 = re.search(r'with\s+(\d+\.?\d*)\+?\s*(?:years?|yrs?)', text_lower)
-            if exp_match3:
-                exp = int(float(exp_match3.group(1)))
-        
-        # Strategy 4: Standalone "X years" near job-related context
-        if exp == 0:
-            exp_match4 = re.search(r'(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s+(?:in|of|at|as|working|building|developing|designing|managing)', text_lower)
-            if exp_match4:
-                exp = int(float(exp_match4.group(1)))
-        
-        # Strategy 5 (Fallback): Compute career span from date ranges
-        # Use SPAN (latest end - earliest start) NOT sum, to avoid inflation
-        if exp == 0:
-            date_ranges = re.findall(r'(20\d{2})\s*(?:-|to|–|—)\s*(20\d{2}|present|now|current)', text_lower)
-            if date_ranges:
-                all_starts = []
-                all_ends = []
-                for start, end in date_ranges:
-                    s = int(start)
-                    e = datetime.now().year if end in ['present', 'now', 'current'] else int(end)
-
-                    # Only consider work-era dates (after 2010) to skip education
-
-                    if s >= 2010 and e >= s:
-                        all_starts.append(s)
-                        all_ends.append(e)
-                if all_starts and all_ends:
-                    exp = max(all_ends) - min(all_starts)
-        
-        if exp > 25: exp = 25 # sanity cap
-        
-        return {
-            "email": email,
-            "phone": phone,
-            "skills": found_skills if found_skills else ["N/A"],
-            "education": edu,
-            "experience": exp
-        }
+    # OCR all images of this upload up front so several can run in parallel (3 or more new images).
+    ocr_service.prefetch(_collect_images(uploaded_files))
 
     for file in uploaded_files:
         filename = file.filename
@@ -184,16 +174,18 @@ def api_upload():
                             file_bytes = f.read()
                             text = process_file_content(zinfo.filename, file_bytes)
                             if text.strip():
-                                meta = extract_metadata(text)
+                                meta = parse_metadata(text, zinfo.filename)
                                 resumes.append({
                                     "resume_id": str(uuid.uuid4())[:8],
-                                    "name": zinfo.filename.split('/')[-1].replace('.pdf', '').replace('.txt', '').replace('.docx', ''),
+                                    "name": meta["name"],
                                     "text": text,
                                     "email": meta["email"],
                                     "phone": meta["phone"],
                                     "education": meta["education"],
                                     "skills": meta["skills"], 
-                                    "experience": meta["experience"] 
+                                    "experience": meta["experience"],
+                                    "titles": meta.get("titles", []), "companies": meta.get("companies", []),
+                                    "extra_skills": meta.get("extra_skills", []), "parser_mode": meta.get("parser_mode", "regex-fallback")
                                 })
             except Exception as e:
                 print(f"Error reading ZIP {filename}: {e}")
@@ -201,16 +193,18 @@ def api_upload():
             file_bytes = file.read()
             text = process_file_content(filename, file_bytes)
             if text.strip():
-                meta = extract_metadata(text)
+                meta = parse_metadata(text, filename)
                 resumes.append({
                     "resume_id": str(uuid.uuid4())[:8],
-                    "name": filename.replace('.pdf', '').replace('.txt', '').replace('.docx', ''),
+                    "name": meta["name"],
                     "text": text,
                     "email": meta["email"],
                     "phone": meta["phone"],
                     "education": meta["education"],
                     "skills": meta["skills"], 
-                    "experience": meta["experience"] 
+                    "experience": meta["experience"],
+                    "titles": meta.get("titles", []), "companies": meta.get("companies", []),
+                    "extra_skills": meta.get("extra_skills", []), "parser_mode": meta.get("parser_mode", "regex-fallback")
                 })
 
     if not resumes:
@@ -226,7 +220,7 @@ def api_upload():
         # 2. Search for best candidates using JobBERT + Vector Search (scoped to uploaded batch)
         t_search = time.time()
         uploaded_ids = [r['resume_id'] for r in resumes]
-        rankings = search_best_candidates(jd_text, top_k=10, resume_ids=uploaded_ids)
+        rankings = search_best_candidates(jd_text, top_k=min(len(uploaded_ids), RESULT_LIMIT), resume_ids=uploaded_ids)
         search_time = round(time.time() - t_search, 2)
     except Exception as e:
         print(f"Upload processing error: {e}")
@@ -641,5 +635,7 @@ if __name__ == '__main__':
         print(f"[HireFlow] Backend ready. Flask on :{port}, Spark UI on :4040")
     else:
         print(f"[HireFlow] Backend ready. Flask on :{port} (Python mode — no Spark/Java 17)")
+    if os.environ.get("WARMUP", "true").lower() in {"1", "true", "yes"}:
+        threading.Thread(target=warm_up, daemon=True).start()
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 

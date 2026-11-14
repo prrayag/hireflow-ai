@@ -13,3 +13,5 @@ easyocr
 Pillow
 python-docx
 reportlab
+
+transformers

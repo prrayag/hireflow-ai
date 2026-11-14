@@ -10,7 +10,9 @@ from pymongo import MongoClient
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
-from dl_pipeline import experience_match, process_resume_record, sentence_chunks, skill_gap
+from dl_pipeline import (experience_match, extract_jd_phrases, process_resume_record,
+                         sentence_chunks, skill_gap)
+import skill_matcher
 
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ.setdefault("HF_HOME", os.path.join(os.path.dirname(__file__), ".model_cache"))
@@ -23,6 +25,10 @@ CROSS_ENCODER_MODEL = os.getenv(
     else "cross-encoder/ms-marco-MiniLM-L-6-v2",
 )
 ENABLE_CROSS_ENCODER = os.getenv("ENABLE_CROSS_ENCODER", "true").lower() in {"1", "true", "yes"}
+# Spark only pays off for very large batches: its job start-up and serialisation cost more than
+# the chunking it distributes (measured: 100 resumes took 2.2 s in plain Python, 9.4 s with Spark).
+# Set SPARK_MIN_RESUMES=8 to use Spark for small batches again, e.g. to demonstrate it.
+SPARK_MIN_RESUMES = int(os.getenv("SPARK_MIN_RESUMES", "1000"))
 MODEL_VERSION = "hireflow-weakly-supervised-ranker-v1" if os.path.isdir(LOCAL_CROSS_ENCODER) else "hireflow-neural-ranker-v1"
 
 
@@ -121,8 +127,8 @@ def _get_cross_encoder():
 
 def process_resumes_batch(resumes_data: list[dict]) -> int:
     """Create section-aware chunks, batch-embed them, and persist their vectors."""
-    spark = get_spark()
-    if spark is not None and len(resumes_data) >= 8:
+    spark = get_spark() if len(resumes_data) >= SPARK_MIN_RESUMES else None
+    if spark is not None:
         try:
             partitions = min(max(2, len(resumes_data) // 10), 16)
             # Spark workers start with their own sys.path. Ship the pure
@@ -212,10 +218,16 @@ def search_best_candidates(jd_text: str, top_k: int = 5, resume_ids=None) -> lis
         except Exception as exc:
             print(f"[HireFlow] Cross-encoder inference failed: {exc}")
 
+    # Free-text JD requirements (e.g. "wound care") are matched to each candidate's NER-found
+    # skills with the bi-encoder. FREE_TEXT_SKILLS=false restores dictionary-only coverage.
+    jd_phrases = extract_jd_phrases(jd_text) if skill_matcher.ENABLED else []
+    match_fn = skill_matcher.match_skills if jd_phrases else None
+
     results = []
     for candidate in candidates:
         meta = candidate["metadata"]
-        gap = skill_gap(meta.get("skills", []), jd_text)
+        gap = skill_gap(meta.get("skills", []), jd_text, jd_phrases=jd_phrases,
+                        candidate_extra=meta.get("extra_skills", []), match_fn=match_fn)
         exp_score = experience_match(meta.get("experience", 0), jd_text)
         reranker = candidate.get("reranker_score")
         if reranker is None:
@@ -236,5 +248,7 @@ def search_best_candidates(jd_text: str, top_k: int = 5, resume_ids=None) -> lis
             "model_version": MODEL_VERSION, "experience": meta.get("experience", 0),
             "skills": meta.get("skills", []), "email": meta.get("email", "Not Found"),
             "phone": meta.get("phone", "Not Found"), "education": meta.get("education", "Not Found"),
+            "titles": meta.get("titles", []), "companies": meta.get("companies", []),
+            "extra_skills": meta.get("extra_skills", []), "parser_mode": meta.get("parser_mode", "regex-fallback"),
         })
     return sorted(results, key=lambda item: item["ai_score"], reverse=True)[:top_k]
