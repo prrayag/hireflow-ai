@@ -427,7 +427,19 @@ function DashboardPage() {
                                                                     <div style={{ flex: '1 1 200px' }}>
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>Background</span>
                                                                         <p style={{ margin: '8px 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Education:</strong> {candidate.education}</p>
+                                                                        {(candidate.titles || []).length > 0 && (
+                                                                            <p style={{ margin: '0 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Job titles:</strong> {candidate.titles.join(', ')}</p>
+                                                                        )}
+                                                                        {(candidate.companies || []).length > 0 && (
+                                                                            <p style={{ margin: '0 0 4px', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Employers:</strong> {candidate.companies.join(', ')}</p>
+                                                                        )}
                                                                         <p style={{ margin: '0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>All Skills:</strong> {candidate.skills.join(', ')}</p>
+                                                                        {(candidate.extra_skills || []).length > 0 && (
+                                                                            <p style={{ margin: '4px 0 0', fontSize: '0.95rem', color: 'var(--ink)' }}><strong>Other skills found:</strong> {candidate.extra_skills.join(', ')}</p>
+                                                                        )}
+                                                                        {candidate.parser_mode && (
+                                                                            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--ink)', opacity: 0.6 }}>Parsed with: {candidate.parser_mode === 'ner' ? 'neural NER model' : 'rule-based parser'}</p>
+                                                                        )}
                                                                     </div>
                                                                     <div style={{ flex: '1 1 260px' }}>
                                                                         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em' }}>DL Score Breakdown</span>
