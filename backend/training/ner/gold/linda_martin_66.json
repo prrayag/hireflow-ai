@@ -1,0 +1,28 @@
+{
+  "source_file": "linda_martin_66.docx",
+  "labeller": "derived-from-template",
+  "name": "Linda Martin",
+  "skills": [
+    "PostgreSQL",
+    "Machine Learning",
+    "Vue.js",
+    "Kubernetes",
+    "Data Science",
+    "UI/UX",
+    "C#",
+    "Python",
+    "Ruby on Rails",
+    "React"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

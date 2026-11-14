@@ -1,0 +1,28 @@
+{
+  "source_file": "john_moore_37.docx",
+  "labeller": "derived-from-template",
+  "name": "John Moore",
+  "skills": [
+    "Node.js",
+    "Python",
+    "TensorFlow",
+    "React",
+    "JavaScript",
+    "CI/CD",
+    "Ruby on Rails",
+    "DevOps",
+    "Java",
+    "HTML"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

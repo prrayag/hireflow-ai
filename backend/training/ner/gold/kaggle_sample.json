@@ -1,0 +1,205 @@
+{
+  "seed": 42,
+  "resumes": [
+    {
+      "id": "28969385",
+      "category": "ACCOUNTANT",
+      "chars": 5678
+    },
+    {
+      "id": "54067174",
+      "category": "ADVOCATE",
+      "chars": 3794
+    },
+    {
+      "id": "28165687",
+      "category": "AGRICULTURE",
+      "chars": 5962
+    },
+    {
+      "id": "91533580",
+      "category": "APPAREL",
+      "chars": 4937
+    },
+    {
+      "id": "21867728",
+      "category": "ARTS",
+      "chars": 6131
+    },
+    {
+      "id": "84295343",
+      "category": "AUTOMOBILE",
+      "chars": 1982
+    },
+    {
+      "id": "12144825",
+      "category": "AVIATION",
+      "chars": 3930
+    },
+    {
+      "id": "13982572",
+      "category": "BANKING",
+      "chars": 4624
+    },
+    {
+      "id": "19362586",
+      "category": "BPO",
+      "chars": 5346
+    },
+    {
+      "id": "67501448",
+      "category": "BUSINESS-DEVELOPMENT",
+      "chars": 5898
+    },
+    {
+      "id": "16804396",
+      "category": "CHEF",
+      "chars": 4764
+    },
+    {
+      "id": "19928941",
+      "category": "CONSTRUCTION",
+      "chars": 1757
+    },
+    {
+      "id": "26291616",
+      "category": "CONSULTANT",
+      "chars": 6183
+    },
+    {
+      "id": "19164410",
+      "category": "DESIGNER",
+      "chars": 5093
+    },
+    {
+      "id": "13328680",
+      "category": "DIGITAL-MEDIA",
+      "chars": 5642
+    },
+    {
+      "id": "21298336",
+      "category": "ENGINEERING",
+      "chars": 1197
+    },
+    {
+      "id": "37931076",
+      "category": "FINANCE",
+      "chars": 3028
+    },
+    {
+      "id": "77266989",
+      "category": "FITNESS",
+      "chars": 5102
+    },
+    {
+      "id": "41910253",
+      "category": "HEALTHCARE",
+      "chars": 3350
+    },
+    {
+      "id": "10694288",
+      "category": "HR",
+      "chars": 4812
+    },
+    {
+      "id": "37764298",
+      "category": "INFORMATION-TECHNOLOGY",
+      "chars": 6660
+    },
+    {
+      "id": "29329075",
+      "category": "PUBLIC-RELATIONS",
+      "chars": 5492
+    },
+    {
+      "id": "29211919",
+      "category": "SALES",
+      "chars": 3355
+    },
+    {
+      "id": "15899269",
+      "category": "TEACHER",
+      "chars": 2676
+    },
+    {
+      "id": "64017585",
+      "category": "INFORMATION-TECHNOLOGY",
+      "chars": 3109
+    },
+    {
+      "id": "21669215",
+      "category": "PUBLIC-RELATIONS",
+      "chars": 3684
+    },
+    {
+      "id": "99806115",
+      "category": "APPAREL",
+      "chars": 6188
+    },
+    {
+      "id": "56792999",
+      "category": "CONSULTANT",
+      "chars": 4963
+    },
+    {
+      "id": "11773925",
+      "category": "BANKING",
+      "chars": 5654
+    },
+    {
+      "id": "28630325",
+      "category": "ENGINEERING",
+      "chars": 2684
+    },
+    {
+      "id": "16924279",
+      "category": "CONSTRUCTION",
+      "chars": 5266
+    },
+    {
+      "id": "13491889",
+      "category": "ACCOUNTANT",
+      "chars": 4993
+    },
+    {
+      "id": "17165107",
+      "category": "ADVOCATE",
+      "chars": 3948
+    },
+    {
+      "id": "27847081",
+      "category": "HR",
+      "chars": 5947
+    },
+    {
+      "id": "20357858",
+      "category": "BUSINESS-DEVELOPMENT",
+      "chars": 5184
+    },
+    {
+      "id": "93301686",
+      "category": "DESIGNER",
+      "chars": 5710
+    },
+    {
+      "id": "80000092",
+      "category": "FITNESS",
+      "chars": 1459
+    },
+    {
+      "id": "13583538",
+      "category": "TEACHER",
+      "chars": 5888
+    },
+    {
+      "id": "38907798",
+      "category": "FINANCE",
+      "chars": 5180
+    },
+    {
+      "id": "29449419",
+      "category": "CHEF",
+      "chars": 5166
+    }
+  ]
+}

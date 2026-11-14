@@ -1,0 +1,24 @@
+{
+  "source_file": "william_anderson_7.docx",
+  "labeller": "derived-from-template",
+  "name": "William Anderson",
+  "skills": [
+    "MongoDB",
+    "Vue.js",
+    "React",
+    "Kubernetes",
+    "DevOps",
+    "Data Science"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

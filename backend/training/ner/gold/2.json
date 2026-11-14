@@ -1,0 +1,20 @@
+{
+  "source_file": "2.jpg",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Logan Osborne",
+  "skills": [
+    "Communication Skills",
+    "Motivated Attitude",
+    "Office Technology Skills",
+    "Social Media Platforms"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": 3,
+  "job_titles": [
+    "Sales Associate"
+  ],
+  "companies": [
+    "Big Apple Bookstore"
+  ],
+  "notes": "No stated figure; span Sep 2023 to Mar 2026 = 3. Student; degree is 2022-2026. Hard case: skills are soft skills."
+}

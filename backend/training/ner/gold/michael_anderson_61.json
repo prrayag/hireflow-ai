@@ -1,0 +1,28 @@
+{
+  "source_file": "michael_anderson_61.docx",
+  "labeller": "derived-from-template",
+  "name": "Michael Anderson",
+  "skills": [
+    "Data Science",
+    "Git",
+    "FastAPI",
+    "DevOps",
+    "C#",
+    "Python",
+    "Vue.js",
+    "Angular",
+    "React",
+    "Django"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

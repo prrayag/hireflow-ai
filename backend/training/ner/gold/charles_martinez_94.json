@@ -1,0 +1,25 @@
+{
+  "source_file": "charles_martinez_94.docx",
+  "labeller": "derived-from-template",
+  "name": "Charles Martinez",
+  "skills": [
+    "SQL",
+    "Kubernetes",
+    ".NET",
+    "DevOps",
+    "UI/UX",
+    "Ruby on Rails",
+    "C#"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

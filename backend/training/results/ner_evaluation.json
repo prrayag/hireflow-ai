@@ -1,0 +1,101 @@
+{
+  "group": "kaggle",
+  "resumes_scored": 40,
+  "ner_parser_modes": {
+    "ner": 40
+  },
+  "seconds_total": {
+    "regex": 0.65,
+    "ner": 38.32
+  },
+  "methods": {
+    "regex": {
+      "name_accuracy": 0.0,
+      "degree_accuracy": 0.425,
+      "experience_within_1y": 0.562,
+      "experience_mae_years": 5.312,
+      "skills_canonical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "skills_text": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "titles": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 132
+      },
+      "companies": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "n": {
+        "name": 1,
+        "degree": 40,
+        "experience_within_1y": 16,
+        "experience_mae": 16
+      }
+    },
+    "ner": {
+      "name_accuracy": 1.0,
+      "degree_accuracy": 0.8,
+      "experience_within_1y": 0.812,
+      "experience_mae_years": 1.438,
+      "skills_canonical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "skills_text": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "titles": {
+        "precision": 0.628,
+        "recall": 0.818,
+        "f1": 0.711,
+        "tp": 108,
+        "fp": 64,
+        "fn": 24
+      },
+      "companies": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "n": {
+        "name": 1,
+        "degree": 40,
+        "experience_within_1y": 16,
+        "experience_mae": 16
+      }
+    }
+  }
+}

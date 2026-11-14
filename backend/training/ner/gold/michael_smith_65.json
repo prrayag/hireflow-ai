@@ -1,0 +1,23 @@
+{
+  "source_file": "michael_smith_65.docx",
+  "labeller": "derived-from-template",
+  "name": "Michael Smith",
+  "skills": [
+    "SQL",
+    "C#",
+    "AWS",
+    "TypeScript",
+    "FastAPI"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

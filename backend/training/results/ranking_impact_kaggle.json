@@ -1,0 +1,98 @@
+{
+  "group": "kaggle",
+  "resumes": 16,
+  "jds": {
+    "backend_python": {
+      "regex": {
+        "mae_points_of_15": 2.125,
+        "spearman_vs_gold": 0.319
+      },
+      "ner": {
+        "mae_points_of_15": 0.625,
+        "spearman_vs_gold": 0.534
+      }
+    },
+    "ml_engineer": {
+      "regex": {
+        "mae_points_of_15": 0.125,
+        "spearman_vs_gold": null
+      },
+      "ner": {
+        "mae_points_of_15": 0.125,
+        "spearman_vs_gold": null
+      }
+    },
+    "frontend": {
+      "regex": {
+        "mae_points_of_15": 0.208,
+        "spearman_vs_gold": null
+      },
+      "ner": {
+        "mae_points_of_15": 0.208,
+        "spearman_vs_gold": null
+      }
+    },
+    "devops": {
+      "regex": {
+        "mae_points_of_15": 0.312,
+        "spearman_vs_gold": null
+      },
+      "ner": {
+        "mae_points_of_15": 0.312,
+        "spearman_vs_gold": null
+      }
+    },
+    "java_fullstack": {
+      "regex": {
+        "mae_points_of_15": 0.357,
+        "spearman_vs_gold": null
+      },
+      "ner": {
+        "mae_points_of_15": 0.357,
+        "spearman_vs_gold": null
+      }
+    },
+    "manager_5y": {
+      "regex": {
+        "mae_points_of_15": 1.812,
+        "spearman_vs_gold": 0.333
+      },
+      "ner": {
+        "mae_points_of_15": 0.312,
+        "spearman_vs_gold": 0.633
+      }
+    },
+    "specialist_3y": {
+      "regex": {
+        "mae_points_of_15": 1.875,
+        "spearman_vs_gold": null
+      },
+      "ner": {
+        "mae_points_of_15": 0.312,
+        "spearman_vs_gold": null
+      }
+    },
+    "senior_8y": {
+      "regex": {
+        "mae_points_of_15": 1.641,
+        "spearman_vs_gold": 0.438
+      },
+      "ner": {
+        "mae_points_of_15": 0.234,
+        "spearman_vs_gold": 0.991
+      }
+    }
+  },
+  "mean": {
+    "regex": {
+      "mae_points_of_15": 1.057,
+      "spearman_vs_gold": 0.363,
+      "jds_with_defined_ordering": 3
+    },
+    "ner": {
+      "mae_points_of_15": 0.311,
+      "spearman_vs_gold": 0.719,
+      "jds_with_defined_ordering": 3
+    }
+  }
+}

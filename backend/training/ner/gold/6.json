@@ -1,0 +1,22 @@
+{
+  "source_file": "6.jpg",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Estelle Darcy",
+  "skills": [
+    "Content Writing",
+    "Editing",
+    "SEO Optimization",
+    "Social Media Management",
+    "Video Production",
+    "Graphic Design"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": 3,
+  "job_titles": [
+    "Content Creator"
+  ],
+  "companies": [
+    "Ginyard International Co."
+  ],
+  "notes": "Stated: 3+ years. Company name is small in the image, read as 'Ginyard International Co.', check it."
+}

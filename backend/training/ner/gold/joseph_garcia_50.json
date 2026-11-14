@@ -1,0 +1,27 @@
+{
+  "source_file": "joseph_garcia_50.docx",
+  "labeller": "derived-from-template",
+  "name": "Joseph Garcia",
+  "skills": [
+    ".NET",
+    "DevOps",
+    "Vue.js",
+    "Python",
+    "Docker",
+    "SQL",
+    "TypeScript",
+    "HTML",
+    "Kubernetes"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

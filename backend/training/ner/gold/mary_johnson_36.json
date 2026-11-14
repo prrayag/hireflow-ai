@@ -1,0 +1,25 @@
+{
+  "source_file": "mary_johnson_36.docx",
+  "labeller": "derived-from-template",
+  "name": "Mary Johnson",
+  "skills": [
+    "CSS",
+    "React",
+    "HTML",
+    "Agile",
+    "PostgreSQL",
+    "JavaScript",
+    "C++"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

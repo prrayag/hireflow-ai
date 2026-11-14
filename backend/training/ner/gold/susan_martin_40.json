@@ -1,0 +1,21 @@
+{
+  "source_file": "susan_martin_40.docx",
+  "labeller": "derived-from-template",
+  "name": "Susan Martin",
+  "skills": [
+    "CI/CD",
+    "Figma",
+    "Ruby on Rails"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

@@ -1,0 +1,22 @@
+{
+  "source_file": "joseph_brown_59.docx",
+  "labeller": "derived-from-template",
+  "name": "Joseph Brown",
+  "skills": [
+    "Node.js",
+    "Figma",
+    "Java",
+    "React"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

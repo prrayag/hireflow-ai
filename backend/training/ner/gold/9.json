@@ -1,0 +1,26 @@
+{
+  "source_file": "9.jpg",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Narendra Shukla",
+  "skills": [
+    "Supply Chain Management",
+    "Order Management",
+    "Vendor Management",
+    "Inventory Control",
+    "Store Management",
+    "Logistics Management",
+    "Warehouse Administration",
+    "Vehicle Assembly",
+    "Dispatch Planning",
+    "Bill of Lading Management"
+  ],
+  "degree": "Master's Degree",
+  "experience_years": 4,
+  "job_titles": [
+    "Senior Logistic Associate"
+  ],
+  "companies": [
+    "Nxxxxx Pvt Ltd"
+  ],
+  "notes": "Stated: over 4 years. Degree is PGDM (a postgraduate diploma), labelled Master's Degree, a judgement call, please review. The coloured keyword cloud was not counted as skills. Company name is masked in the resume."
+}

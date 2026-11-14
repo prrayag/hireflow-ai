@@ -1,0 +1,27 @@
+{
+  "source_file": "8.png",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Lauren Chen",
+  "skills": [
+    "Digital Data Analytics",
+    "Adobe Photoshop",
+    "Adobe Illustrator",
+    "Adobe InDesign",
+    "AutoCAD",
+    "Rhinoceros",
+    "Semrush",
+    "Ahrefs",
+    "Page Optimizer Pro"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": 6,
+  "job_titles": [
+    "Digital Marketing Specialist",
+    "Dig Digital Marketing Associate",
+    "Marketing Intern"
+  ],
+  "companies": [
+    "BCG"
+  ],
+  "notes": "Stated: 6+ years. Dates are placeholders (20XX), so no span can be computed. Degree is 'expected'. Semrush, Ahrefs and Page Optimizer Pro come from the experience bullets."
+}

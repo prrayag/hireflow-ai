@@ -1,0 +1,24 @@
+{
+  "source_file": "william_wilson_53.docx",
+  "labeller": "derived-from-template",
+  "name": "William Wilson",
+  "skills": [
+    "Agile",
+    "JavaScript",
+    "Git",
+    "Django",
+    "TypeScript",
+    "Python"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

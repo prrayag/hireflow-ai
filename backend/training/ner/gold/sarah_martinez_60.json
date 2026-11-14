@@ -1,0 +1,28 @@
+{
+  "source_file": "sarah_martinez_60.docx",
+  "labeller": "derived-from-template",
+  "name": "Sarah Martinez",
+  "skills": [
+    "C#",
+    "C++",
+    "Scrum",
+    "CSS",
+    "Kubernetes",
+    "Spring Boot",
+    "FastAPI",
+    "Vue.js",
+    "TypeScript",
+    "MongoDB"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

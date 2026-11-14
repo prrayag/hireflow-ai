@@ -1,0 +1,27 @@
+{
+  "source_file": "john_garcia_68.docx",
+  "labeller": "derived-from-template",
+  "name": "John Garcia",
+  "skills": [
+    "MongoDB",
+    "AWS",
+    "CSS",
+    "FastAPI",
+    "Agile",
+    "SQL",
+    "TensorFlow",
+    "Git",
+    "Vue.js"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

@@ -1,0 +1,27 @@
+{
+  "source_file": "karen_hernandez_10.docx",
+  "labeller": "derived-from-template",
+  "name": "Karen Hernandez",
+  "skills": [
+    "Ruby on Rails",
+    "Machine Learning",
+    "Python",
+    ".NET",
+    "Figma",
+    "HTML",
+    "FastAPI",
+    "Django",
+    "Agile"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

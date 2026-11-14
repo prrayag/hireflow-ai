@@ -1,0 +1,21 @@
+{
+  "source_file": "thomas_gonzalez_85.docx",
+  "labeller": "derived-from-template",
+  "name": "Thomas Gonzalez",
+  "skills": [
+    "Node.js",
+    "Docker",
+    "CSS"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

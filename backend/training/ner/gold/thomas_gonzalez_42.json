@@ -1,0 +1,25 @@
+{
+  "source_file": "thomas_gonzalez_42.docx",
+  "labeller": "derived-from-template",
+  "name": "Thomas Gonzalez",
+  "skills": [
+    "Git",
+    "Machine Learning",
+    ".NET",
+    "Python",
+    "DevOps",
+    "PyTorch",
+    "Node.js"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

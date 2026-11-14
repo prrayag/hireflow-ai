@@ -1,0 +1,23 @@
+{
+  "source_file": "richard_lopez_4.docx",
+  "labeller": "derived-from-template",
+  "name": "Richard Lopez",
+  "skills": [
+    "CSS",
+    "Kubernetes",
+    "Flask",
+    ".NET",
+    "Spring Boot"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

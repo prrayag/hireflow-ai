@@ -1,0 +1,22 @@
+{
+  "source_file": "susan_thomas_71.docx",
+  "labeller": "derived-from-template",
+  "name": "Susan Thomas",
+  "skills": [
+    "MongoDB",
+    "Django",
+    "UI/UX",
+    "Java"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

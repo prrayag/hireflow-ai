@@ -1,0 +1,145 @@
+{
+  "rows": [
+    {
+      "threshold": "old (dictionary only)",
+      "target_resume_ranked_first_alone": "1/5",
+      "mean_coverage_target": 20.0,
+      "mean_coverage_other_resumes": 0.0
+    },
+    {
+      "threshold": 0.5,
+      "target_resume_ranked_first_alone": "3/5",
+      "mean_coverage_target": 75.3,
+      "mean_coverage_other_resumes": 5.5
+    },
+    {
+      "threshold": 0.6,
+      "target_resume_ranked_first_alone": "4/5",
+      "mean_coverage_target": 67.3,
+      "mean_coverage_other_resumes": 2.0
+    },
+    {
+      "threshold": 0.7,
+      "target_resume_ranked_first_alone": "4/5",
+      "mean_coverage_target": 67.3,
+      "mean_coverage_other_resumes": 2.0
+    },
+    {
+      "threshold": 0.75,
+      "target_resume_ranked_first_alone": "4/5",
+      "mean_coverage_target": 67.3,
+      "mean_coverage_other_resumes": 2.0
+    },
+    {
+      "threshold": 0.8,
+      "target_resume_ranked_first_alone": "4/5",
+      "mean_coverage_target": 63.3,
+      "mean_coverage_other_resumes": 2.0
+    },
+    {
+      "threshold": 0.9,
+      "target_resume_ranked_first_alone": "4/5",
+      "mean_coverage_target": 60.0,
+      "mean_coverage_other_resumes": 2.0
+    }
+  ],
+  "matches_at_0.75": {
+    "photo_editor": {
+      "1": [
+        "Adobe Photoshop"
+      ],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [
+        "Adobe Photoshop"
+      ],
+      "9": [],
+      "10": []
+    },
+    "registered_nurse": {
+      "1": [],
+      "2": [],
+      "3": [
+        "patient care",
+        "wound care",
+        "case management",
+        "surgical support",
+        "clinical communication"
+      ],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": [],
+      "10": []
+    },
+    "project_manager": {
+      "1": [],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [
+        "Agile",
+        "project planning",
+        "budget control",
+        "process improvement",
+        "team leadership"
+      ],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": [
+        "project planning",
+        "process improvement"
+      ],
+      "10": []
+    },
+    "finance_clerk": {
+      "1": [],
+      "2": [
+        "Microsoft Office"
+      ],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": [],
+      "10": [
+        "financial accounting",
+        "tax accounting",
+        "accounts payable",
+        "payroll",
+        "Microsoft Office"
+      ]
+    },
+    "digital_marketer": {
+      "1": [
+        "Adobe Photoshop"
+      ],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [
+        "SEO"
+      ],
+      "7": [],
+      "8": [
+        "Adobe Illustrator",
+        "Adobe Photoshop",
+        "data analytics"
+      ],
+      "9": [],
+      "10": [
+        "data analytics"
+      ]
+    }
+  }
+}

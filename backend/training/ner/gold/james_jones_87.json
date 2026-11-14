@@ -1,0 +1,26 @@
+{
+  "source_file": "james_jones_87.docx",
+  "labeller": "derived-from-template",
+  "name": "James Jones",
+  "skills": [
+    "C++",
+    "HTML",
+    "React",
+    "C#",
+    "Scrum",
+    "Python",
+    "Data Science",
+    "Docker"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

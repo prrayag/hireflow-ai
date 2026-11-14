@@ -47,3 +47,11 @@ resumes/
 
 # backend data directory (duplicate of root XLSX)
 backend/data/
+
+# NER evaluation data kept out of git: raw downloads, resume images, and Kaggle resume text
+# (real people's data, licence not confirmed). Recreate with sample_kaggle.py / build_gold_workspace.py.
+archive.zip
+backend/training/ner/samples/
+backend/training/ner/Samples/
+backend/training/ner/zip_resumes/
+backend/training/ner/gold/kg_*

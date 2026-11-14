@@ -1,0 +1,25 @@
+{
+  "source_file": "robert_miller_75.docx",
+  "labeller": "derived-from-template",
+  "name": "Robert Miller",
+  "skills": [
+    "Django",
+    "Python",
+    "Figma",
+    "Java",
+    "SQL",
+    "UI/UX",
+    "Machine Learning"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

@@ -1,0 +1,23 @@
+{
+  "source_file": "4.jpg",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Priya Singh",
+  "skills": [
+    "Preventive Maintenance",
+    "Vendor Negotiation",
+    "CAFM Software",
+    "OSHA/ADA Compliance",
+    "Downtime Reduction"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": 7,
+  "job_titles": [
+    "Facility Property Manager",
+    "Assistant Facilities Manager"
+  ],
+  "companies": [
+    "Silicon Valley Tech Park",
+    "Bay Area Business Center"
+  ],
+  "notes": "Stated: seven years. First job header reads 'February 2017' with no end date."
+}

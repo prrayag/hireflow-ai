@@ -1,0 +1,23 @@
+{
+  "source_file": "1.jpeg",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Andrea Murphy",
+  "skills": [
+    "Photoshop",
+    "Lightroom",
+    "Color grading",
+    "Batch automation",
+    "Image management"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": 6,
+  "job_titles": [
+    "Photo Editor",
+    "Assistant Photo Editor"
+  ],
+  "companies": [
+    "StyleMag Online",
+    "SnapWorks Studio"
+  ],
+  "notes": "Stated: six years."
+}

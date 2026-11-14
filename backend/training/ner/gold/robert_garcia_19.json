@@ -1,0 +1,26 @@
+{
+  "source_file": "robert_garcia_19.docx",
+  "labeller": "derived-from-template",
+  "name": "Robert Garcia",
+  "skills": [
+    "React",
+    "Data Science",
+    "Kubernetes",
+    "JavaScript",
+    "Figma",
+    "Scrum",
+    "Node.js",
+    "Django"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

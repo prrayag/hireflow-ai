@@ -647,3 +647,18 @@ An accurate description is:
 The next research step is to collect independent labels from multiple human
 reviewers, measure reviewer agreement, retrain on those labels, and compare the
 human-trained model against all current baselines.
+
+---
+
+## 13. Neural resume parser (added later)
+
+A pretrained DistilBERT NER model (`oksomu/resume-ner`) now parses resumes before
+scoring, with the regex parser as a fallback. We did not train it. Details, results
+and limits are in `backend/training/ner/README.md`.
+
+Accurate claim: *HireFlow AI uses a pretrained transformer NER model to extract
+name, degree, experience, job titles and companies from resumes, falling back to a
+rule-based parser. On a small hand-labelled set it recovered these fields far more
+reliably than the rule-based parser. The parser controls only the skill-coverage and
+experience terms (15 points) of the final score, so its effect on the ranking is
+limited. On 40 Kaggle resumes with draft labels it was clearly more accurate on degree, experience and job titles; the labels still need a second reviewer, and the model may have seen this dataset in training.*

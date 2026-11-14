@@ -1,0 +1,28 @@
+{
+  "source_file": "5.png",
+  "labeller": "claude-draft (needs human review)",
+  "name": "Debra Jenkins",
+  "skills": [
+    "Project planning and execution",
+    "Team leadership and management",
+    "Budgeting and cost control",
+    "Stakeholder communication",
+    "Agile and Waterfall methodologies",
+    "Process improvement",
+    "Cross-functional collaboration",
+    "Cost containment"
+  ],
+  "degree": "Master's Degree",
+  "experience_years": 11,
+  "job_titles": [
+    "Project Manager",
+    "Senior Project Coordinator",
+    "Assistant Project Manager"
+  ],
+  "companies": [
+    "Truenorth Corporation",
+    "FootBridge Energy",
+    "BCS"
+  ],
+  "notes": "Stated: 11 years. Skill line 7 is small in the image; I read 'Cross-functional collaboration', check it. Also has MBA and BBA."
+}

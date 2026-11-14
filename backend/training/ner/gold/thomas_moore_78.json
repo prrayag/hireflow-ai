@@ -1,0 +1,28 @@
+{
+  "source_file": "thomas_moore_78.docx",
+  "labeller": "derived-from-template",
+  "name": "Thomas Moore",
+  "skills": [
+    "DevOps",
+    "C++",
+    "Machine Learning",
+    "Docker",
+    "PyTorch",
+    "Django",
+    "Python",
+    "CSS",
+    "Vue.js",
+    "Kubernetes"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}

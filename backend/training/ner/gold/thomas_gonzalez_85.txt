@@ -1,0 +1,12 @@
+Thomas Gonzalez - Resume
+Summary
+Experienced software engineer with a track record of building scalable web applications and data pipelines.
+Skills
+Node.js, Docker, CSS
+Experience
+Senior Software Engineer - Tech Corp (2018-Present)
+- Developed amazing features using modern web technologies.
+Software Engineer - Startup Inc (2015-2018)
+- Maintained critical infrastructure and improved performance.
+Education
+B.S. in Computer Science - University of Technology

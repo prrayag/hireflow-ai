@@ -1,0 +1,25 @@
+{
+  "source_file": "robert_hernandez_45.docx",
+  "labeller": "derived-from-template",
+  "name": "Robert Hernandez",
+  "skills": [
+    "PostgreSQL",
+    "DevOps",
+    "MongoDB",
+    "Node.js",
+    "Machine Learning",
+    "Flask",
+    "TypeScript"
+  ],
+  "degree": "Bachelor's Degree",
+  "experience_years": null,
+  "job_titles": [
+    "Senior Software Engineer",
+    "Software Engineer"
+  ],
+  "companies": [
+    "Tech Corp",
+    "Startup Inc"
+  ],
+  "notes": "Template resume. experience_years deliberately not labelled."
+}
